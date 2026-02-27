@@ -1,4 +1,4 @@
-package br.com.vibetex.infrastructure.configurations;
+package br.com.fightConnect.infrastructure.configurations;
 
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;

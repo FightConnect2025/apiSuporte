@@ -1,18 +1,18 @@
-package br.com.vibetex.domain.models.dtos;
+package br.com.fightConnect.domain.models.dtos;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import br.com.vibetex.domain.models.enums.TicketStatus;
+import br.com.fightConnect.domain.models.enums.TicketStatus;
 
 public record TicketResponseDTO(
 		   UUID id,
 	        UUID usuarioId,
-	        UUID vistoriaId,
+	        UUID planoId,
+	        UUID equipeId,
 	        String titulo,
 	        String descricao,
-	        String numeroVistoria,
 
 	        // ✅ NOVOS
 	        Long numeroTicket,
@@ -24,6 +24,7 @@ public record TicketResponseDTO(
 	        OffsetDateTime atualizadoEm,
 	        OffsetDateTime fechadoEm,
 	        String nomeUsuario,
-	        String nomeEmpresa,
+	        String nomeEquipe,
+	        String nomePlano,
 	        List<TicketFotoResponseDTO> fotos
 ) {}

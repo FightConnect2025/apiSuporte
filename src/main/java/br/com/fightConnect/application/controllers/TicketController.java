@@ -1,5 +1,6 @@
-package br.com.vibetex.application.controllers;
+package br.com.fightConnect.application.controllers;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -7,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -22,12 +25,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import br.com.vibetex.domain.contracts.services.TicketService;
-import br.com.vibetex.domain.models.dtos.CreateTicketRequestDTO;
-import br.com.vibetex.domain.models.dtos.TicketResponseDTO;
-import br.com.vibetex.domain.models.dtos.UpdateTicketRequestDTO;
-import br.com.vibetex.domain.models.dtos.UpdateTicketStatusRequestDTO;
-import br.com.vibetex.domain.models.enums.TicketStatus;
+import br.com.fightConnect.domain.contracts.services.TicketService;
+import br.com.fightConnect.domain.models.dtos.CreateTicketMessageRequestDTO;
+import br.com.fightConnect.domain.models.dtos.CreateTicketRequestDTO;
+import br.com.fightConnect.domain.models.dtos.FinalizarTicketRequestDTO;
+import br.com.fightConnect.domain.models.dtos.MarkTicketReadRequestDTO;
+import br.com.fightConnect.domain.models.dtos.TicketMessageResponseDTO;
+import br.com.fightConnect.domain.models.dtos.TicketResponseDTO;
+import br.com.fightConnect.domain.models.dtos.UpdateTicketRequestDTO;
+import br.com.fightConnect.domain.models.dtos.UpdateTicketStatusRequestDTO;
+import br.com.fightConnect.domain.models.enums.TicketStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,51 +49,43 @@ import lombok.RequiredArgsConstructor;
 public class TicketController {
 
     private final TicketService ticketService;
-    
+
+    // ==========================
+    // TICKETS
+    // ==========================
+    @Operation(summary = "Criar ticket")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public TicketResponseDTO criar(@RequestBody @Valid CreateTicketRequestDTO dto) {
         return ticketService.criar(dto);
     }
 
-
-    @Operation(summary = "Atualizar status")
-    @PatchMapping(value = "/{id}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public TicketResponseDTO atualizarStatus(
-            @PathVariable @NotNull UUID id,
-            @RequestBody @Valid UpdateTicketStatusRequestDTO dto
-    ) {
-        return ticketService.atualizarStatus(id, dto.status());
-    }
-
-    @Operation(summary = "Atualizar ticket")
-    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public TicketResponseDTO atualizar(
-            @PathVariable @NotNull UUID id,
-            @RequestBody @Valid UpdateTicketRequestDTO dto
-    ) {
-        return ticketService.atualizar(id, dto);
-    }
-
-    @Operation(summary = "Deletar ticket")
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletar(@PathVariable @NotNull UUID id) {
-        ticketService.deletar(id);
-    }
-
-    @Operation(summary = "Buscar por ID")
+    @Operation(summary = "Buscar ticket por id")
     @GetMapping("/{id}")
     public TicketResponseDTO buscarPorId(@PathVariable @NotNull UUID id) {
         return ticketService.buscarPorId(id);
     }
 
-    @Operation(summary = "Listar tickets (por usuário opcional)")
+    @Operation(summary = "Listar tickets (filtros opcionais: usuarioId, equipeId, periodo)")
     @GetMapping
     public Page<TicketResponseDTO> listar(
-            @RequestParam(required = false) UUID usuarioId, // ✅ agora opcional
+            @RequestParam(required = false) UUID usuarioId,
+            @RequestParam(required = false) UUID equipeId,
+
+            // ✅ NOVO (para calcular hasUnread no backend - Opção 4A)
+            @RequestParam(required = false) UUID viewerId,
+
             @RequestParam(defaultValue = "false") boolean abertos,
             @RequestParam(required = false) List<TicketStatus> status,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = ISO.DATE_TIME)
+            OffsetDateTime dataInicio,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = ISO.DATE_TIME)
+            OffsetDateTime dataFim,
+
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "criadoEm") String sortBy,
@@ -98,13 +97,84 @@ public class TicketController {
 
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        // ✅ se veio usuarioId -> filtra por usuário
-        if (usuarioId != null) {
-            return ticketService.listarPorUsuario(usuarioId, abertos, status, pageable);
-        }
-
-        // ✅ se não veio -> traz todos
-        return ticketService.listarTodos(abertos, status, pageable);
+        return ticketService.listarFiltrado(
+                usuarioId,
+                equipeId,
+                viewerId,
+                abertos,
+                status,
+                dataInicio,
+                dataFim,
+                pageable
+        );
     }
 
+    @Operation(summary = "Atualizar ticket")
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public TicketResponseDTO atualizar(
+            @PathVariable @NotNull UUID id,
+            @RequestBody @Valid UpdateTicketRequestDTO dto
+    ) {
+        return ticketService.atualizar(id, dto);
+    }
+
+    @Operation(summary = "Atualizar status (NÃO finaliza; para RESOLVIDO/FECHADO use /finalizar)")
+    @PatchMapping(value = "/{id}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public TicketResponseDTO atualizarStatus(
+            @PathVariable @NotNull UUID id,
+            @RequestBody @Valid UpdateTicketStatusRequestDTO dto
+    ) {
+        return ticketService.atualizarStatus(id, dto.status());
+    }
+
+    @Operation(summary = "Deletar ticket")
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletar(@PathVariable @NotNull UUID id) {
+        ticketService.deletar(id);
+    }
+
+    // ==========================
+    // MENSAGENS (ticket_messages)
+    // ==========================
+    @Operation(summary = "Listar mensagens do ticket")
+    @GetMapping("/{ticketId}/mensagens")
+    public List<TicketMessageResponseDTO> listarMensagens(@PathVariable @NotNull UUID ticketId) {
+        return ticketService.listar(ticketId);
+    }
+
+    @Operation(summary = "Adicionar mensagem ao ticket")
+    @PostMapping(value = "/{ticketId}/mensagens", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public TicketMessageResponseDTO adicionarMensagem(
+            @PathVariable @NotNull UUID ticketId,
+            @RequestParam @NotNull UUID autorUsuarioId,
+            @RequestBody @Valid CreateTicketMessageRequestDTO dto
+    ) {
+        return ticketService.adicionar(ticketId, autorUsuarioId, dto);
+    }
+
+    @Operation(summary = "Responder e finalizar (cria mensagem + muda status para RESOLVIDO/FECHADO)")
+    @PostMapping(value = "/{ticketId}/finalizar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void responderEFinalizar(
+            @PathVariable @NotNull UUID ticketId,
+            @RequestParam @NotNull UUID autorUsuarioId,
+            @RequestBody @Valid FinalizarTicketRequestDTO dto
+    ) {
+        ticketService.responderEFinalizar(ticketId, autorUsuarioId, dto);
+    }
+
+    // ==========================
+    // READ / VISUALIZADO
+    // ==========================
+    @Operation(summary = "Marcar ticket como lido (visualizado)")
+    @PostMapping(value = "/{ticketId}/read", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void marcarComoLido(
+            @PathVariable @NotNull UUID ticketId,
+            @RequestBody @Valid MarkTicketReadRequestDTO dto
+    ) {
+        ticketService.marcarComoLido(ticketId, dto.usuarioId());
+    }
 }

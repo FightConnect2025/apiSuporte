@@ -1,4 +1,4 @@
-package br.com.vibetex.domain.models.enums;
+package br.com.fightConnect.domain.models.enums;
 
 import java.util.Arrays;
 

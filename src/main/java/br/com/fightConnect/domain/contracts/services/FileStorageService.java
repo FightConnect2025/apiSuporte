@@ -1,6 +1,6 @@
-package br.com.vibetex.domain.contracts.services;
+package br.com.fightConnect.domain.contracts.services;
 
-import br.com.vibetex.domain.contracts.storage.StoredFile;
+import br.com.fightConnect.domain.contracts.storage.StoredFile;
 
 public interface FileStorageService {
 	/**

@@ -1,7 +1,6 @@
-package br.com.vibetex.domain.models.enums;
+package br.com.fightConnect.domain.models.enums;
 
 public enum TicketMessageAuthorType {
-    CLIENTE,
-    AGENTE,
-    SISTEMA
+    EQUIPE,
+    AGENTE
 }

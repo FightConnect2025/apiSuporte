@@ -1,4 +1,4 @@
-package br.com.vibetex.domain.components;
+package br.com.fightConnect.domain.components;
 
 import java.text.Normalizer;
 import java.util.Base64;
@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import br.com.vibetex.domain.contracts.services.FileStorageService;
-import br.com.vibetex.domain.models.entities.TicketFoto;
+import br.com.fightConnect.domain.contracts.services.FileStorageService;
+import br.com.fightConnect.domain.models.entities.TicketFoto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -30,14 +30,22 @@ public class TicketFotoComponent {
     @Value("${app.foto.max-bytes:5242880}") // 5MB
     private long maxBytes;
 
-    @Value("${app.storage.public-host:https://cedae.homologacao.vibetex.com.br}")
+    /**
+     * Ex: https://app.fightconnect.com.br
+     * Se vazio, salva URL relativa mesmo (ex: /tickets/pasta/arquivo.png)
+     */
+    @Value("${app.storage.public-host:}")
     private String publicHost;
 
+    // =========================================================
+    // ✅ OVERLOAD 1: você passa a pasta pronta (NÃO slugify aqui)
+    // =========================================================
     @Transactional
-    public void salvarBase64(UUID ticketId, String nomeEmpresa, List<String> fotosBase64) {
+    public void salvarBase64(UUID ticketId, String folder, List<String> fotosBase64) {
         if (fotosBase64 == null || fotosBase64.isEmpty()) return;
+        if (ticketId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ticketId é obrigatório");
 
-        String empresaSlug = slugify(nomeEmpresa);
+        String safeFolder = sanitizeFolder(folder);
 
         for (String base64 : fotosBase64) {
             if (base64 == null || base64.isBlank()) continue;
@@ -53,26 +61,47 @@ public class TicketFotoComponent {
             UUID fotoId = UUID.randomUUID();
             String fileName = fotoId + info.ext;
 
-            var stored = storage.save(bytes, info.mime, fileName, empresaSlug);
+            var stored = storage.save(bytes, info.mime, fileName, safeFolder);
 
-            String urlAbsoluta = normalizeHost(publicHost) + stored.url();
+            // stored.url() vem tipo: /tickets/<folder>/<file>
+            String url = absolutizeIfPossible(stored.url());
 
             var foto = TicketFoto.builder()
-                    .id(fotoId)              // ✅ pode setar ID
+                    .id(fotoId)
                     .ticketId(ticketId)
                     .fileName(fileName)
                     .contentType(info.mime)
                     .sizeBytes((long) bytes.length)
                     .storageKey(stored.storageKey())
-                    .url(urlAbsoluta)
+                    .url(url)
                     .build();
 
-            // ✅ FORÇA INSERT (persist) em vez de merge
             em.persist(foto);
         }
     }
 
+    // =========================================================
+    // ✅ OVERLOAD 2: monta a pasta por equipe (slug + equipeId)
+    // =========================================================
+    @Transactional
+    public void salvarBase64(UUID ticketId, UUID equipeId, String nomeEquipe, List<String> fotosBase64) {
+        String slug = slugify(nomeEquipe);
+
+        String folder = (equipeId == null)
+                ? slug
+                : (slug + "-" + equipeId);
+
+        salvarBase64(ticketId, folder, fotosBase64);
+    }
+
     // ---------------- helpers ----------------
+
+    private String absolutizeIfPossible(String relativeUrl) {
+        String host = normalizeHost(publicHost);
+        if (host.isBlank()) return relativeUrl; // mantém relativo
+        if (relativeUrl == null) return host;
+        return host + relativeUrl;
+    }
 
     private byte[] decodeBase64(String base64) {
         try {
@@ -109,12 +138,14 @@ public class TicketFotoComponent {
     }
 
     private String normalizeHost(String host) {
-        if (host == null || host.isBlank()) return "";
-        return host.endsWith("/") ? host.substring(0, host.length() - 1) : host;
+        if (host == null) return "";
+        String h = host.trim();
+        if (h.isBlank()) return "";
+        return h.endsWith("/") ? h.substring(0, h.length() - 1) : h;
     }
 
     private String slugify(String input) {
-        if (input == null || input.isBlank()) return "empresa-sem-nome";
+        if (input == null || input.isBlank()) return "equipe-sem-nome";
 
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
@@ -124,10 +155,22 @@ public class TicketFotoComponent {
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-+|-+$)", "");
 
-        if (slug.isBlank()) slug = "empresa-sem-nome";
+        if (slug.isBlank()) slug = "equipe-sem-nome";
         if (slug.length() > 60) slug = slug.substring(0, 60);
 
         return slug;
+    }
+
+    private String sanitizeFolder(String folder) {
+        if (folder == null || folder.isBlank()) return "equipe-sem-nome";
+        String f = folder.replace("\\", "/")
+                .replaceAll("\\.\\.", "")
+                .replaceAll("^/+", "")
+                .replaceAll("/+$", "");
+        // só pra garantir caracteres ok
+        f = f.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9/_-]", "-");
+        f = f.replaceAll("-+", "-");
+        return f.isBlank() ? "equipe-sem-nome" : f;
     }
 
     private record FotoInfo(String mime, String ext) {}

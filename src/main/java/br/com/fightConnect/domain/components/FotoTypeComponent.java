@@ -1,11 +1,11 @@
-package br.com.vibetex.domain.components;
+package br.com.fightConnect.domain.components;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import br.com.vibetex.domain.models.enums.FotoTipo;
+import br.com.fightConnect.domain.models.enums.FotoTipo;
 
 @Component
 public class FotoTypeComponent {

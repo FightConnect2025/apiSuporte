@@ -1,11 +1,11 @@
-package br.com.vibetex.domain.models.entities;
+package br.com.fightConnect.domain.models.entities;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
 
-import br.com.vibetex.domain.models.enums.TicketMessageAuthorType;
+import br.com.fightConnect.domain.models.enums.TicketMessageAuthorType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,6 +37,13 @@ public class TicketMessage {
 
     @Column(name = "criado_em", nullable = false)
     private OffsetDateTime criadoEm;
+    
+    @Column(name = "autor_nome", length = 200)
+    private String autorNome;
+
+    @Column(name = "equipe_nome", length = 200)
+    private String equipeNome;
+
 
     @PrePersist
     void prePersist() {

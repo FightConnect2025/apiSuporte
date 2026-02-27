@@ -1,4 +1,4 @@
-package br.com.vibetex.infrastructure.storage;
+package br.com.fightConnect.infrastructure.storage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -9,8 +9,8 @@ import java.text.Normalizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import br.com.vibetex.domain.contracts.services.FileStorageService;
-import br.com.vibetex.domain.contracts.storage.StoredFile;
+import br.com.fightConnect.domain.contracts.services.FileStorageService;
+import br.com.fightConnect.domain.contracts.storage.StoredFile;
 
 @Service
 public class LocalFileStorageService implements FileStorageService {

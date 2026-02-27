@@ -1,11 +1,11 @@
-package br.com.vibetex.domain.models.entities;
+package br.com.fightConnect.domain.models.entities;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
 
-import br.com.vibetex.domain.models.enums.TicketStatus;
+import br.com.fightConnect.domain.models.enums.TicketStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,10 +22,10 @@ import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.var;
 
 @Entity
 @Table(
@@ -42,6 +42,7 @@ import lombok.var;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
+@Data
 public class Ticket {
 
     @Id
@@ -52,11 +53,11 @@ public class Ticket {
     @Column(name = "usuario_id", nullable = false)
     private UUID usuarioId;
 
-    @Column(name = "vistoria_id")
-    private UUID vistoriaId;
+    @Column(name = "polano_id")
+    private UUID planoId;
 
-    @Column(name = "numero_vistoria", nullable = false)
-    private String numeroVistoria;
+    @Column(name = "equipeId", nullable = false)
+    private UUID equipeId;
 
     @Column(name = "titulo", nullable = false, length = 200)
     private String titulo;
@@ -71,8 +72,11 @@ public class Ticket {
     @Column(name = "nome_usuario", nullable = false, length = 200)
     private String nomeUsuario;
 
-    @Column(name = "nome_empresa", nullable = false, length = 200)
-    private String nomeEmpresa;
+    @Column(name = "nome_equipe", nullable = false, length = 200)
+    private String nomeEquipe;
+    
+    @Column(name = "nome_plano", nullable = false, length = 200)
+    private String nomePlano;
     
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("criadoEm ASC")

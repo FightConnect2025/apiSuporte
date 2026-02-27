@@ -1,4 +1,4 @@
-package br.com.vibetex.domain.models.dtos;
+package br.com.fightConnect.domain.models.dtos;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;

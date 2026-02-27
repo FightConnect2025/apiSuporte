@@ -1,12 +1,14 @@
-package br.com.vibetex.domain.models.dtos;
+package br.com.fightConnect.domain.models.dtos;
 
 import java.util.List;
 import java.util.UUID;
 
 public record UpdateTicketRequestDTO(
-        UUID vistoriaId,
+        UUID equipeId,
 	    String titulo,
-	    String numeroVistoria,
+	    UUID planoId,
+	    String nomePlano,
+	    String nomeEquipe,
 	    String descricao,
 	    List<String> fotosBase64 // ✅ novo, opcional
 ) {}
