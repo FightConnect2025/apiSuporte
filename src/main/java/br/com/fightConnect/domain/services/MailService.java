@@ -102,6 +102,35 @@ public class MailService {
     }
 
     // ==========================
+    // PUSH - MÚLTIPLOS PERFIS
+    // ==========================
+    public void notifyPushToProfiles(
+            UUID equipeId,
+            List<String> perfis,
+            String eventType,
+            String titulo,
+            String corpo,
+            String url,
+            String tag,
+            String ticketId,
+            String ticketNumero,
+            String ticketTitulo,
+            String usuarioNome,
+            String status
+    ) {
+        if (equipeId == null) return;
+        if (perfis == null || perfis.isEmpty()) return;
+
+        NotificacaoAutomaticaRequestDto dto = basePushDto(
+                equipeId, eventType, titulo, corpo, url, tag,
+                ticketId, ticketNumero, ticketTitulo, usuarioNome, status
+        );
+
+        dto.setDestinatario(perfis.stream().map(String::trim).toList());
+        producer.enviar(dto);
+    }
+
+    // ==========================
     // Builders
     // ==========================
     private NotificacaoAutomaticaRequestDto basePushDto(

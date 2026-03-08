@@ -125,10 +125,8 @@ public class TicketServiceImpl implements TicketService {
 			String url = "/public/suporte" + (ticketId.isBlank() ? "" : ("?ticketId=" + ticketId));
 			String tag = "suporte-ticket-" + (ticketId.isBlank() ? ticketNumero : ticketId);
 
-			mailService.notifyPushToProfile(saved.getEquipeId(), "SUPER_GESTOR", "SUPORTE_TICKET_CRIADO", titulo, corpo,
-					url, tag, ticketId, ticketNumero, ticketTitulo, usuarioNome, null);
-
-			mailService.notifyPushToProfile(saved.getEquipeId(), "SUPER_ADMIN", "SUPORTE_TICKET_CRIADO", titulo, corpo,
+			mailService.notifyPushToProfiles(saved.getEquipeId(), List.of("SUPER_GESTOR", "SUPER_ADMIN"),
+					"SUPORTE_TICKET_CRIADO", titulo, corpo,
 					url, tag, ticketId, ticketNumero, ticketTitulo, usuarioNome, null);
 
 		} catch (Exception e) {
