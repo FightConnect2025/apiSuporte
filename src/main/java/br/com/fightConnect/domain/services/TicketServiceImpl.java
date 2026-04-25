@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.ArrayList;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +41,9 @@ import br.com.fightConnect.infrastructure.repositories.specs.TicketSpecification
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -61,6 +65,37 @@ public class TicketServiceImpl implements TicketService {
 
 	private static final List<TicketStatus> STATUS_ABERTOS = List
 			.copyOf(EnumSet.of(TicketStatus.ABERTO, TicketStatus.EM_ANDAMENTO, TicketStatus.AGUARDANDO_USUARIO));
+
+	private UUID getEquipeIdDoToken() {
+		try {
+			var auth = SecurityContextHolder.getContext().getAuthentication();
+			if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+				String equipeIdStr = jwt.getClaimAsString("equipeId");
+				if (equipeIdStr != null) return UUID.fromString(equipeIdStr);
+			}
+		} catch (Exception ignored) {}
+		return null;
+	}
+
+	private boolean isAdminDoToken() {
+		try {
+			var auth = SecurityContextHolder.getContext().getAuthentication();
+			return auth != null && auth.getAuthorities().stream()
+					.anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
+		} catch (Exception ignored) {}
+		return false;
+	}
+
+	private void validarAcessoTicket(Ticket ticket) {
+		if (isAdminDoToken()) return; // Admin vê tudo
+
+		UUID equipeIdToken = getEquipeIdDoToken();
+
+		// Se não for da mesma equipe, bloqueia
+		if (equipeIdToken != null && !ticket.getEquipeId().equals(equipeIdToken)) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado aos dados de outra equipe.");
+		}
+	}
 
 	// ==========================
 	// CREATE
@@ -134,22 +169,6 @@ public class TicketServiceImpl implements TicketService {
 		}
 	}
 
-	private String buildPushBodyNewTicket(Ticket t) {
-		String tituloTicket = nullSafe(t.getTitulo()).trim();
-		String usuario = nullSafe(t.getNomeUsuario()).trim();
-
-		String corpo = "Novo ticket aberto";
-		if (!tituloTicket.isBlank())
-			corpo += ": " + tituloTicket;
-		if (!usuario.isBlank())
-			corpo += " • " + usuario;
-
-		// limite pra push
-		if (corpo.length() > 140)
-			corpo = corpo.substring(0, 137) + "...";
-		return corpo;
-	}
-
 	// ==========================
 	// UPDATE
 	// ==========================
@@ -157,6 +176,7 @@ public class TicketServiceImpl implements TicketService {
 	@Transactional
 	public TicketResponseDTO atualizar(UUID id, UpdateTicketRequestDTO dto) {
 		Ticket ticket = findTicketOrThrow(id);
+		validarAcessoTicket(ticket);
 
 		if (dto != null) {
 			if (dto.equipeId() != null)
@@ -202,6 +222,8 @@ public class TicketServiceImpl implements TicketService {
 		}
 
 		Ticket ticket = findTicketOrThrow(id);
+		validarAcessoTicket(ticket);
+		
 		TicketStatus old = ticket.getStatus();
 
 		onReopenIfNeeded(ticket, old, status);
@@ -231,6 +253,8 @@ public class TicketServiceImpl implements TicketService {
 		Ticket ticket = repo.findById(id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket não encontrado"));
 
+		validarAcessoTicket(ticket);
+
 		List<TicketFoto> fotos = fotoRepo.findByTicketIdOrderByCriadoEmDesc(ticket.getId());
 		for (TicketFoto f : fotos) {
 			try {
@@ -251,17 +275,22 @@ public class TicketServiceImpl implements TicketService {
 	@Override
 	@Transactional(readOnly = true)
 	public TicketResponseDTO buscarPorId(UUID id) {
-		return toDTO(findTicketOrThrow(id));
+		Ticket ticket = findTicketOrThrow(id);
+		validarAcessoTicket(ticket);
+		return toDTO(ticket);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public Page<TicketResponseDTO> listarTodos(boolean apenasAbertos, List<TicketStatus> status, Pageable pageable) {
-		List<TicketStatus> filtro = (status != null && !status.isEmpty()) ? status
+		// Se não for admin, filtra pela equipe do token
+		UUID equipeIdToken = isAdminDoToken() ? null : getEquipeIdDoToken();
+		
+		List<TicketStatus> filtroStatus = (status != null && !status.isEmpty()) ? status
 				: (apenasAbertos ? STATUS_ABERTOS : null);
 
-		Page<Ticket> page = (filtro == null) ? repo.findAll(pageable) : repo.findByStatusIn(filtro, pageable);
-		return page.map(this::toDTO);
+		Specification<Ticket> spec = TicketSpecifications.filtro(null, equipeIdToken, filtroStatus, null, null);
+		return repo.findAll(spec, pageable).map(this::toDTO);
 	}
 
 	@Override
@@ -271,6 +300,9 @@ public class TicketServiceImpl implements TicketService {
 		if (usuarioId == null)
 			throw badRequest("usuarioId é obrigatório");
 
+		// Se não for admin, garante que o usuário logado só veja os seus próprios tickets ou seja da mesma equipe
+		// Por segurança, vamos apenas filtrar pelo usuarioId fornecido, mas o controller deve garantir que o usuarioId é o logado.
+		
 		List<TicketStatus> filtro = (status != null && !status.isEmpty()) ? status
 				: (apenasAbertos ? STATUS_ABERTOS : null);
 
@@ -280,18 +312,37 @@ public class TicketServiceImpl implements TicketService {
 		return page.map(this::toDTO);
 	}
 
-	// ✅ assinatura nova com viewerId (já alinhado com teu controller/interface)
+	@Override
+	@Transactional(readOnly = true)
+	public Page<TicketResponseDTO> listarFiltrado(UUID usuarioId, UUID equipeId, boolean apenasAbertos,
+			List<TicketStatus> status, OffsetDateTime dataInicio, OffsetDateTime dataFim, Pageable pageable) {
+		
+		// Multi-tenancy check
+		UUID equipeIdToken = isAdminDoToken() ? null : getEquipeIdDoToken();
+		UUID equipeParaFiltrar = equipeId;
+		
+		if (equipeIdToken != null) {
+			if (equipeId != null && !equipeId.equals(equipeIdToken)) {
+				throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é permitido listar tickets de outra equipe.");
+			}
+			equipeParaFiltrar = equipeIdToken;
+		}
+
+		List<TicketStatus> filtroStatus = (status != null && !status.isEmpty()) ? status
+				: (apenasAbertos ? STATUS_ABERTOS : null);
+
+		Specification<Ticket> spec = TicketSpecifications.filtro(usuarioId, equipeParaFiltrar, filtroStatus, dataInicio,
+				dataFim);
+
+		return repo.findAll(spec, pageable).map(this::toDTO);
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public Page<TicketResponseDTO> listarFiltrado(UUID usuarioId, UUID equipeId, UUID viewerId, boolean apenasAbertos,
 			List<TicketStatus> status, OffsetDateTime dataInicio, OffsetDateTime dataFim, Pageable pageable) {
-		List<TicketStatus> filtroStatus = (status != null && !status.isEmpty()) ? status
-				: (apenasAbertos ? STATUS_ABERTOS : null);
-
-		Specification<Ticket> spec = TicketSpecifications.filtro(usuarioId, equipeId, filtroStatus, dataInicio,
-				dataFim);
-		// (Opção 4A hasUnread entra depois, aqui só mantém compatível)
-		return repo.findAll(spec, pageable).map(this::toDTO);
+		// Por enquanto viewerId não altera a lógica de filtro, apenas delegamos para o método principal
+		return listarFiltrado(usuarioId, equipeId, apenasAbertos, status, dataInicio, dataFim, pageable);
 	}
 
 	// ==========================
@@ -303,8 +354,8 @@ public class TicketServiceImpl implements TicketService {
 		if (ticketId == null)
 			throw badRequest("ticketId é obrigatório");
 
-		// valida existência do ticket (evita listar de id inválido)
-		findTicketOrThrow(ticketId);
+		Ticket ticket = findTicketOrThrow(ticketId);
+		validarAcessoTicket(ticket);
 
 		return messageRepo.findByTicketIdOrderByCriadoEmAsc(ticketId).stream().map(this::toMessageDTO).toList();
 	}
@@ -324,6 +375,7 @@ public class TicketServiceImpl implements TicketService {
 			throw badRequest("texto é obrigatório");
 
 		Ticket ticket = findTicketOrThrow(ticketId);
+		validarAcessoTicket(ticket);
 
 		String autorNome = resolveAutorNome(autorUsuarioId); // ✅ snapshot
 		String equipeNome = nullSafe(ticket.getNomeEquipe()); // ✅ snapshot
@@ -337,9 +389,6 @@ public class TicketServiceImpl implements TicketService {
 		// ✅ PUSH: nova mensagem (vai pra fila, worker dispara)
 		enqueuePushNewMessage(ticket, saved);
 
-		// (opcional) quando suporte responde, colocar AGUARDANDO_USUARIO
-		// automaticamente
-		// Mantive a sua regra original:
 		if (ticket.getStatus() == TicketStatus.EM_ANDAMENTO) {
 			ticket.setStatus(TicketStatus.AGUARDANDO_USUARIO);
 			repo.save(ticket);
@@ -367,6 +416,8 @@ public class TicketServiceImpl implements TicketService {
 			throw badRequest("statusFinal deve ser RESOLVIDO ou FECHADO");
 
 		Ticket ticket = findTicketOrThrow(ticketId);
+		validarAcessoTicket(ticket);
+		
 		TicketStatus old = ticket.getStatus();
 
 		String autorNome = resolveAutorNome(autorUsuarioId); // ✅ snapshot
@@ -401,7 +452,8 @@ public class TicketServiceImpl implements TicketService {
 		if (usuarioId == null)
 			throw badRequest("usuarioId é obrigatório");
 
-		findTicketOrThrow(ticketId);
+		Ticket ticket = findTicketOrThrow(ticketId);
+		validarAcessoTicket(ticket);
 
 		var now = OffsetDateTime.now();
 
@@ -667,30 +719,33 @@ public class TicketServiceImpl implements TicketService {
 		return corpo;
 	}
 
-	/**
-	 * Como você mostrou que existe "AGENTE" e "EQUIPE", aqui eu trato como
-	 * "USUÁRIO" tudo que NÃO for AGENTE/EQUIPE. Se seu enum tiver "USUARIO" /
-	 * "ALUNO", também funciona.
-	 */
-	private boolean isAutorUsuario(TicketMessage msg) {
-		if (msg.getAutorTipo() == null)
-			return false;
-		String tipo = msg.getAutorTipo().name();
-		if ("AGENTE".equalsIgnoreCase(tipo))
-			return false;
-		if ("EQUIPE".equalsIgnoreCase(tipo))
-			return false;
-		// exemplos comuns:
-		if ("USUARIO".equalsIgnoreCase(tipo))
-			return true;
-		if ("ALUNO".equalsIgnoreCase(tipo))
-			return true;
-		return true; // default
+	private static String nullSafe(String s) {
+		return s == null ? "" : s;
 	}
 
 	// ==========================
-	// Textos
+	// DTO Mapping
 	// ==========================
+	private TicketFotoResponseDTO toFotoDTO(TicketFoto f) {
+		return new TicketFotoResponseDTO(f.getId(), f.getFileName(), f.getContentType(), f.getSizeBytes(), f.getUrl(),
+				f.getCriadoEm());
+	}
+
+	private TicketResponseDTO toDTO(Ticket t) {
+		var fotos = fotoRepo.findByTicketIdOrderByCriadoEmDesc(t.getId()).stream().map(this::toFotoDTO).toList();
+
+		return new TicketResponseDTO(t.getId(), t.getUsuarioId(), t.getPlanoId(), t.getEquipeId(), t.getTitulo(),
+				t.getDescricao(),
+
+				t.getNumeroTicket(), t.getReaberturaSeq(), t.getNumeroExibicao(),
+
+				t.getStatus(), t.getCriadoEm(), t.getAtualizadoEm(), t.getFechadoEm(),
+
+				t.getNomeUsuario(), t.getNomeEquipe(), t.getNomePlano(),
+
+				fotos);
+	}
+
 	private String buildSupportNewTicketText(Ticket t) {
 		String numero = nullSafe(t.getNumeroExibicao());
 		String id = t.getId() == null ? "" : t.getId().toString();
@@ -768,46 +823,6 @@ public class TicketServiceImpl implements TicketService {
 
 				— Enviado automaticamente pelo sistema FightConnect.
 				""".formatted(numero, titulo, equipe, status, resposta);
-	}
-
-	private static String nullSafe(String s) {
-		return s == null ? "" : s;
-	}
-
-	// ==========================
-	// DTO Mapping
-	// ==========================
-	private TicketFotoResponseDTO toFotoDTO(TicketFoto f) {
-		return new TicketFotoResponseDTO(f.getId(), f.getFileName(), f.getContentType(), f.getSizeBytes(), f.getUrl(),
-				f.getCriadoEm());
-	}
-
-	private TicketResponseDTO toDTO(Ticket t) {
-		var fotos = fotoRepo.findByTicketIdOrderByCriadoEmDesc(t.getId()).stream().map(this::toFotoDTO).toList();
-
-		return new TicketResponseDTO(t.getId(), t.getUsuarioId(), t.getPlanoId(), t.getEquipeId(), t.getTitulo(),
-				t.getDescricao(),
-
-				t.getNumeroTicket(), t.getReaberturaSeq(), t.getNumeroExibicao(),
-
-				t.getStatus(), t.getCriadoEm(), t.getAtualizadoEm(), t.getFechadoEm(),
-
-				t.getNomeUsuario(), t.getNomeEquipe(), t.getNomePlano(),
-
-				fotos);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public Page<TicketResponseDTO> listarFiltrado(UUID usuarioId, UUID equipeId, boolean apenasAbertos,
-			List<TicketStatus> status, OffsetDateTime dataInicio, OffsetDateTime dataFim, Pageable pageable) {
-		List<TicketStatus> filtroStatus = (status != null && !status.isEmpty()) ? status
-				: (apenasAbertos ? STATUS_ABERTOS : null);
-
-		Specification<Ticket> spec = TicketSpecifications.filtro(usuarioId, equipeId, filtroStatus, dataInicio,
-				dataFim);
-
-		return repo.findAll(spec, pageable).map(this::toDTO);
 	}
 
 }
