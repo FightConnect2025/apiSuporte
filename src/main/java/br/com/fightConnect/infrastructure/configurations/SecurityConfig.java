@@ -13,8 +13,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,6 +29,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Base64;
+
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.Collections;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -44,10 +53,21 @@ public class SecurityConfig {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .bearerTokenResolver(bearerTokenResolver) // ✅ lê do header OU cookie
-                .jwt(withDefaults())
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
 
         return http.build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        var converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            String perfil = jwt.getClaimAsString("perfil");
+            if (perfil == null || perfil.isBlank()) return Collections.emptyList();
+            return List.of(new SimpleGrantedAuthority("ROLE_" + perfil));
+        });
+        return converter;
     }
 
     /**
@@ -82,15 +102,38 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        byte[] keyBytes = isBase64(secret)
-                ? Base64.getDecoder().decode(secret)
-                : secret.getBytes(StandardCharsets.UTF_8);
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("JWT secret não configurado ou vazio");
+        }
+
+        String cleanSecret = secret.trim();
+        byte[] keyBytes;
+
+        if (isBase64(cleanSecret)) {
+            try {
+                keyBytes = Base64.getDecoder().decode(cleanSecret);
+            } catch (Exception e) {
+                keyBytes = cleanSecret.getBytes(StandardCharsets.UTF_8);
+            }
+        } else {
+            keyBytes = cleanSecret.getBytes(StandardCharsets.UTF_8);
+        }
+
         SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).build();
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(key).build();
+
+        // Adiciona tolerância de 60 segundos para variações de relógio entre servidores
+        OAuth2TokenValidator<Jwt> withClockSkew = new DelegatingOAuth2TokenValidator<>(
+                new JwtTimestampValidator(java.time.Duration.ofSeconds(60))
+        );
+        jwtDecoder.setJwtValidator(withClockSkew);
+
+        return jwtDecoder;
     }
 
     private boolean isBase64(String value) {
-        return value.matches("^[A-Za-z0-9+/=]+$") && value.length() % 4 == 0;
+        if (value == null || value.length() < 4) return false;
+        return value.matches("^[A-Za-z0-9+/=_\\-]+$") && value.length() % 4 == 0;
     }
 
     @Bean
