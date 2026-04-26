@@ -102,38 +102,8 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        if (secret == null || secret.isBlank()) {
-            throw new IllegalArgumentException("JWT secret não configurado ou vazio");
-        }
-
-        String cleanSecret = secret.trim();
-        byte[] keyBytes;
-
-        if (isBase64(cleanSecret)) {
-            try {
-                keyBytes = Base64.getDecoder().decode(cleanSecret);
-            } catch (Exception e) {
-                keyBytes = cleanSecret.getBytes(StandardCharsets.UTF_8);
-            }
-        } else {
-            keyBytes = cleanSecret.getBytes(StandardCharsets.UTF_8);
-        }
-
-        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
-        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(key).build();
-
-        // Adiciona tolerância de 60 segundos para variações de relógio entre servidores
-        OAuth2TokenValidator<Jwt> withClockSkew = new DelegatingOAuth2TokenValidator<>(
-                new JwtTimestampValidator(java.time.Duration.ofSeconds(60))
-        );
-        jwtDecoder.setJwtValidator(withClockSkew);
-
-        return jwtDecoder;
-    }
-
-    private boolean isBase64(String value) {
-        if (value == null || value.length() < 4) return false;
-        return value.matches("^[A-Za-z0-9+/=_\\-]+$") && value.length() % 4 == 0;
+        SecretKeySpec key = new SecretKeySpec(secret.trim().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        return NimbusJwtDecoder.withSecretKey(key).build();
     }
 
     @Bean
