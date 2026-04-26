@@ -24,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Base64;
 
 @Configuration
 public class SecurityConfig {
@@ -81,8 +82,15 @@ public class SecurityConfig {
      */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        byte[] keyBytes = isBase64(secret)
+                ? Base64.getDecoder().decode(secret)
+                : secret.getBytes(StandardCharsets.UTF_8);
+        SecretKey key = new SecretKeySpec(keyBytes, "HmacSHA256");
         return NimbusJwtDecoder.withSecretKey(key).build();
+    }
+
+    private boolean isBase64(String value) {
+        return value.matches("^[A-Za-z0-9+/=]+$") && value.length() % 4 == 0;
     }
 
     @Bean
