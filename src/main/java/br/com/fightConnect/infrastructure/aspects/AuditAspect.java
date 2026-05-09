@@ -117,8 +117,8 @@ public class AuditAspect {
 
         LogAuditoriaEvent event = LogAuditoriaEvent.builder()
                 .correlationId(correlationId)
-                .usuarioId(usuarioId != null ? UUID.fromString(usuarioId) : null)
-                .equipeId(equipeId != null ? UUID.fromString(equipeId) : null)
+                .usuarioId(safeUuid(usuarioId))
+                .equipeId(safeUuid(equipeId))
                 .nomeUsuario(nomeUsuario)
                 .metodoHttp(request.getMethod())
                 .url(request.getRequestURI())
@@ -179,5 +179,14 @@ public class AuditAspect {
             if (i < maxLines - 1) sb.append(" | ");
         }
         return sb.toString();
+    }
+
+    private UUID safeUuid(String value) {
+        if (value == null) return null;
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

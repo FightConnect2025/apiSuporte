@@ -77,7 +77,7 @@ public class GlobalExceptionHandler {
             auditoriaProducer.enviarEvento(
                 "ERROR",
                 entidade,
-                usuarioId != null ? UUID.fromString(usuarioId) : null,
+                safeUuid(usuarioId),
                 "Erro capturado na API Suporte",
                 detalhes
             );
@@ -92,5 +92,14 @@ public class GlobalExceptionHandler {
             ip = request.getRemoteAddr();
         }
         return ip;
+    }
+
+    private UUID safeUuid(String value) {
+        if (value == null) return null;
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }
