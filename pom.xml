@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>br.com.fightconnect</groupId>
 	<artifactId>apiSuporte</artifactId>
-	<version>2.0.0</version>
+	<version>1.0.0</version>
 	<name>apiSuporte</name>
 	<description>API de Suporte do FightConnect - Tickets, mensagens, anexos, notificacoes, FAQ, feedback e respostas rapidas</description>
 	<properties>
