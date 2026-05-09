@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f6; margin: 0; padding: 0; }
+  .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center; }
+  .header h1 { color: #e94560; margin: 0; font-size: 24px; }
+  .header p { color: #a0a0b0; margin: 8px 0 0; font-size: 14px; }
+  .content { padding: 32px; }
+  .label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 4px; }
+  .value { color: #1a1a2e; font-size: 16px; margin: 0 0 8px; }
+  .divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+  .status-box { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; margin: 16px 0; }
+  .status-old { color: #999; font-size: 14px; text-decoration: line-through; }
+  .status-arrow { font-size: 24px; color: #e94560; margin: 8px 0; }
+  .status-new { color: #1a1a2e; font-size: 20px; font-weight: 700; }
+  .footer { text-align: center; padding: 24px; color: #999; font-size: 12px; border-top: 1px solid #eee; }
+  .btn { display: inline-block; padding: 12px 24px; background: #e94560; color: #fff; text-decoration: none; border-radius: 6px; margin: 16px 0; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>FightConnect</h1>
+    <p>Atualizacao do Ticket <span th:text="${ticketNumero}">0001</span></p>
+  </div>
+  <div class="content">
+    <div class="label">Ticket</div>
+    <div class="value" th:text="${ticketNumero}">0001</div>
+
+    <div class="label">Titulo</div>
+    <div class="value" th:text="${titulo}">Titulo do ticket</div>
+
+    <div class="label">Equipe</div>
+    <div class="value" th:text="${equipe}">Nome da equipe</div>
+
+    <hr class="divider">
+
+    <div class="status-box">
+      <div class="status-old" th:text="'Antigo: ' + ${statusAntigo}">Antigo: ABERTO</div>
+      <div class="status-arrow">&#10132;</div>
+      <div class="status-new" th:text="${statusNovo}">FECHADO</div>
+    </div>
+
+    <div style="text-align:center; margin: 24px 0;">
+      <a class="btn" th:href="${url}" target="_blank">Acompanhar Ticket</a>
+    </div>
+  </div>
+  <div class="footer">
+    Enviado automaticamente pelo sistema FightConnect<br>
+    &copy; 2026 FightConnect
+  </div>
+</div>
+</body>
+</html>

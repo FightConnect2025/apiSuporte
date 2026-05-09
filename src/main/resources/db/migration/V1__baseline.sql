@@ -1,0 +1,16 @@
+-- V1__baseline.sql
+-- Flyway baseline migration for apiSuporte
+--
+-- Este arquivo eh um placeholder. Para bancos existentes, o Flyway usa
+-- baseline-on-migrate=true e nao executa esta migration.
+--
+-- Para gerar o DDL completo a partir das entidades Hibernate:
+--   1. Configure em application-dev.properties:
+--      spring.jpa.properties.jakarta.persistence.schema-generation.scripts.action=create
+--      spring.jpa.properties.jakarta.persistence.schema-generation.scripts.create-target=create.sql
+--   2. Execute a aplicacao uma vez
+--   3. Copie o conteudo de create.sql para este arquivo
+--   4. Remova as propriedades de schema-generation
+--   5. Remova baseline-on-migrate=true apos o primeiro deploy
+--
+-- Ou exporte o schema do banco existente com pg_dump --schema-only

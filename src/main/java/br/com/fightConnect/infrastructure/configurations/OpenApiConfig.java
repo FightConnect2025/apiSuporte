@@ -2,6 +2,7 @@ package br.com.fightConnect.infrastructure.configurations;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Components;
@@ -10,21 +11,19 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
 @Configuration
+@Profile("!prod")
 public class OpenApiConfig {
 
     @Bean
-    public OpenAPI helpdeskOpenAPI() {
-
+    public OpenAPI fightConnectOpenAPI() {
         final String securitySchemeName = "BearerAuth";
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("API Suporte - Helpdesk")
-                        .description("API de tickets (CRUD) + integrações com Usuários e Vistorias.")
-                        .version("v1"))
-                // ✅ diz que a API usa esse esquema por padrão
+                        .title("FightConnect - API de Suporte")
+                        .description("API de tickets de suporte, mensagens, anexos, notificacoes, feedback, base de conhecimento e respostas rapidas.")
+                        .version("v2"))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
-                // ✅ define o esquema Bearer JWT
                 .components(new Components().addSecuritySchemes(securitySchemeName,
                         new SecurityScheme()
                                 .name("Authorization")

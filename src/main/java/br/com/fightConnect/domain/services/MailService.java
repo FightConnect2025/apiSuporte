@@ -1,10 +1,13 @@
 package br.com.fightConnect.domain.services;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import br.com.fightConnect.domain.models.dtos.NotificacaoAutomaticaRequestDto;
 import br.com.fightConnect.domain.models.enums.TipoCanal;
@@ -19,16 +22,27 @@ public class MailService {
     private static final String FALLBACK_EVENT = "PUSH";
 
     private final NotificacaoAutomaticaProducer producer;
+    private final SpringTemplateEngine templateEngine;
 
     @Value("${app.mail.support-to}")
     private String supportTo;
 
-    // ==========================
-    // EMAIL (texto)
-    // ==========================
     public void sendText(UUID equipeId, String to, String text) {
         if (isBlank(to)) return;
         producer.enviarEmail(equipeId, to.trim(), text == null ? "" : text);
+    }
+
+    public void sendHtml(UUID equipeId, String to, String subject, String html) {
+        if (isBlank(to)) return;
+        var dto = new NotificacaoAutomaticaRequestDto();
+        dto.setEquipeId(equipeId);
+        dto.setTipo(TIPO_SUPORTE);
+        dto.setCanal(TipoCanal.EMAIL);
+        dto.setDestinatario(List.of(to.trim()));
+        dto.setAssunto(subject);
+        dto.setMensagemHtml(html);
+        dto.setMensagemResumo(stripHtml(html));
+        producer.enviar(dto);
     }
 
     public void notifySupportNewTicket(UUID equipeId, String subject, String textBody) {
@@ -37,127 +51,99 @@ public class MailService {
         sendText(equipeId, supportTo, payload);
     }
 
+    public void notifySupportNewTicketHtml(UUID equipeId, Map<String, Object> params) {
+        if (isBlank(supportTo)) return;
+        String html = renderTemplate("email/novo-ticket", params);
+        String subject = "Novo Ticket " + params.getOrDefault("ticketNumero", "");
+        sendHtml(equipeId, supportTo, subject, html);
+    }
+
+    public void notifyUserStatusChangeHtml(UUID equipeId, String userEmail, Map<String, Object> params) {
+        if (isBlank(userEmail)) return;
+        String html = renderTemplate("email/atualizacao-status", params);
+        String subject = "Atualizacao do Ticket " + params.getOrDefault("ticketNumero", "");
+        sendHtml(equipeId, userEmail, subject, html);
+    }
+
+    public void notifyUserFinalAnswerHtml(UUID equipeId, String userEmail, Map<String, Object> params) {
+        if (isBlank(userEmail)) return;
+        String html = renderTemplate("email/resposta-final", params);
+        String subject = "Ticket " + params.getOrDefault("ticketNumero", "") + " - " + params.getOrDefault("status", "");
+        sendHtml(equipeId, userEmail, subject, html);
+    }
+
     public void notifyUserStatusChange(UUID equipeId, String userEmail, String subject, String textBody) {
         if (isBlank(userEmail)) return;
         String payload = buildPayload(subject, textBody);
         sendText(equipeId, userEmail, payload);
     }
 
-    // ==========================
-    // PUSH - PERFIL
-    // ==========================
     public void notifyPushToProfile(
-            UUID equipeId,
-            String perfil,
-            String eventType,
-            String titulo,
-            String corpo,
-            String url,
-            String tag,
-            String ticketId,
-            String ticketNumero,
-            String ticketTitulo,
-            String usuarioNome,
-            String status
+            UUID equipeId, String perfil, String eventType, String titulo, String corpo,
+            String url, String tag, String ticketId, String ticketNumero,
+            String ticketTitulo, String usuarioNome, String status
     ) {
-        if (equipeId == null) return;
-        if (isBlank(perfil)) return;
+        if (equipeId == null || isBlank(perfil)) return;
 
         NotificacaoAutomaticaRequestDto dto = basePushDto(
                 equipeId, eventType, titulo, corpo, url, tag,
                 ticketId, ticketNumero, ticketTitulo, usuarioNome, status
         );
-
         dto.setDestinatario(List.of(perfil.trim()));
         producer.enviar(dto);
     }
 
-    // ==========================
-    // PUSH - USUÁRIO (por userId)
-    // ==========================
     public void notifyPushToUser(
-            UUID equipeId,
-            UUID userId,
-            String eventType,
-            String titulo,
-            String corpo,
-            String url,
-            String tag,
-            String ticketId,
-            String ticketNumero,
-            String ticketTitulo,
-            String usuarioNome,
-            String status
+            UUID equipeId, UUID userId, String eventType, String titulo, String corpo,
+            String url, String tag, String ticketId, String ticketNumero,
+            String ticketTitulo, String usuarioNome, String status
     ) {
-        if (equipeId == null) return;
-        if (userId == null) return;
+        if (equipeId == null || userId == null) return;
 
         NotificacaoAutomaticaRequestDto dto = basePushDto(
                 equipeId, eventType, titulo, corpo, url, tag,
                 ticketId, ticketNumero, ticketTitulo, usuarioNome, status
         );
-
         dto.setDestinatario(List.of(userId.toString()));
         producer.enviar(dto);
     }
 
-    // ==========================
-    // PUSH - MÚLTIPLOS PERFIS
-    // ==========================
     public void notifyPushToProfiles(
-            UUID equipeId,
-            List<String> perfis,
-            String eventType,
-            String titulo,
-            String corpo,
-            String url,
-            String tag,
-            String ticketId,
-            String ticketNumero,
-            String ticketTitulo,
-            String usuarioNome,
-            String status
+            UUID equipeId, List<String> perfis, String eventType, String titulo, String corpo,
+            String url, String tag, String ticketId, String ticketNumero,
+            String ticketTitulo, String usuarioNome, String status
     ) {
-        if (equipeId == null) return;
-        if (perfis == null || perfis.isEmpty()) return;
+        if (equipeId == null || perfis == null || perfis.isEmpty()) return;
 
         NotificacaoAutomaticaRequestDto dto = basePushDto(
                 equipeId, eventType, titulo, corpo, url, tag,
                 ticketId, ticketNumero, ticketTitulo, usuarioNome, status
         );
-
         dto.setDestinatario(perfis.stream().map(String::trim).toList());
         producer.enviar(dto);
     }
 
-    // ==========================
-    // Builders
-    // ==========================
+    private String renderTemplate(String template, Map<String, Object> params) {
+        Context context = new Context();
+        params.forEach(context::setVariable);
+        return templateEngine.process(template, context);
+    }
+
     private NotificacaoAutomaticaRequestDto basePushDto(
-            UUID equipeId,
-            String eventType,
-            String titulo,
-            String corpo,
-            String url,
-            String tag,
-            String ticketId,
-            String ticketNumero,
-            String ticketTitulo,
-            String usuarioNome,
-            String status
+            UUID equipeId, String eventType, String titulo, String corpo,
+            String url, String tag, String ticketId, String ticketNumero,
+            String ticketTitulo, String usuarioNome, String status
     ) {
         NotificacaoAutomaticaRequestDto dto = new NotificacaoAutomaticaRequestDto();
-
         dto.setEquipeId(equipeId);
         dto.setCanal(TipoCanal.PUSH);
         dto.setTipo(TIPO_SUPORTE);
 
-        // ✅ garante SEMPRE preenchido
         String et = normalizeEventType(eventType);
         dto.setEventType(et);
 
-        String safeTitle = sanitizeTitle(defaultIfBlank(titulo, "Notificação"));
-        String safeBody  = sanitizeBody(defaultIfBlank(corpo, "Você recebeu uma nova notificação."));
+        String safeTitle = sanitizeTitle(defaultIfBlank(titulo, "Notificacao"));
+        String safeBody  = sanitizeBody(defaultIfBlank(corpo, "Voce recebeu uma nova notificacao."));
         String safeUrl   = defaultIfBlank(url, "");
         String safeTag   = defaultIfBlank(tag, buildDefaultTag(et, ticketId));
 
@@ -166,14 +152,12 @@ public class MailService {
         dto.setUrl(safeUrl);
         dto.setTag(safeTag);
 
-        // extras suporte
         dto.setTicketId(nullIfBlank(ticketId));
         dto.setTicketNumero(nullIfBlank(ticketNumero));
         dto.setTicketTitulo(nullIfBlank(ticketTitulo));
         dto.setUsuarioNome(nullIfBlank(usuarioNome));
         dto.setStatus(nullIfBlank(status));
 
-        // compat legado (se existir no worker)
         dto.setAssunto(safeTitle);
         dto.setMensagemResumo(safeBody);
 
@@ -183,7 +167,6 @@ public class MailService {
     private static String buildPayload(String subject, String body) {
         String s = subject == null ? "" : subject.trim();
         if (s.length() > 120) s = s.substring(0, 117) + "...";
-
         String b = body == null ? "" : body.trim();
         if (b.isBlank()) return s;
         return s + "\n\n" + b;
@@ -197,14 +180,14 @@ public class MailService {
 
     private static String sanitizeTitle(String titulo) {
         String t = titulo == null ? "" : titulo.trim();
-        if (t.isBlank()) t = "Notificação";
+        if (t.isBlank()) t = "Notificacao";
         if (t.length() > 80) t = t.substring(0, 77) + "...";
         return t;
     }
 
     private static String sanitizeBody(String corpo) {
         String c = corpo == null ? "" : corpo.replace("\r", "").trim();
-        if (c.isBlank()) c = "Você recebeu uma nova notificação.";
+        if (c.isBlank()) c = "Voce recebeu uma nova notificacao.";
         if (c.length() > 240) c = c.substring(0, 237) + "...";
         return c;
     }
@@ -214,15 +197,12 @@ public class MailService {
         return defaultIfBlank(eventType, FALLBACK_EVENT) + "-" + System.currentTimeMillis();
     }
 
-    private static String nullIfBlank(String s) {
-        return isBlank(s) ? null : s.trim();
-    }
+    private static String nullIfBlank(String s) { return isBlank(s) ? null : s.trim(); }
+    private static boolean isBlank(String s) { return s == null || s.isBlank(); }
+    private static String defaultIfBlank(String value, String fallback) { return isBlank(value) ? fallback : value; }
 
-    private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
-    }
-
-    private static String defaultIfBlank(String value, String fallback) {
-        return isBlank(value) ? fallback : value;
+    private String stripHtml(String html) {
+        if (html == null) return "";
+        return html.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ").trim();
     }
 }

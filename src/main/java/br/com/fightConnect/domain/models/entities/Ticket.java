@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import org.hibernate.annotations.UuidGenerator;
 
+import br.com.fightConnect.domain.models.enums.TicketCategoria;
+import br.com.fightConnect.domain.models.enums.TicketPrioridade;
 import br.com.fightConnect.domain.models.enums.TicketStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -18,11 +20,9 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,7 +33,9 @@ import lombok.Setter;
     indexes = {
         @Index(name = "ix_ticket_numero", columnList = "numero_ticket"),
         @Index(name = "ix_ticket_usuario", columnList = "usuario_id"),
-        @Index(name = "ix_ticket_status", columnList = "status")
+        @Index(name = "ix_ticket_status", columnList = "status"),
+        @Index(name = "ix_ticket_equipe", columnList = "equipeId"),
+        @Index(name = "ix_ticket_atendente", columnList = "atendente_id")
     },
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_ticket_numero", columnNames = {"numero_ticket"})
@@ -42,7 +44,6 @@ import lombok.Setter;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-@Data
 public class Ticket {
 
     @Id
@@ -69,54 +70,44 @@ public class Ticket {
     @Column(name = "status", nullable = false, length = 40)
     private TicketStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "categoria", length = 30)
+    private TicketCategoria categoria;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "prioridade", length = 10)
+    private TicketPrioridade prioridade;
+
+    @Column(name = "atendente_id")
+    private UUID atendenteId;
+
+    @Column(name = "atendente_nome", length = 200)
+    private String atendenteNome;
+
     @Column(name = "nome_usuario", nullable = false, length = 200)
     private String nomeUsuario;
 
     @Column(name = "nome_equipe", nullable = false, length = 200)
     private String nomeEquipe;
-    
+
     @Column(name = "nome_plano", nullable = false, length = 200)
     private String nomePlano;
-    
+
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("criadoEm ASC")
+    @Builder.Default
     private java.util.List<TicketMessage> mensagens = new java.util.ArrayList<>();
 
-
-    // ==========================
-    // ✅ NÚMERO DO TICKET (EXIBIÇÃO)
-    // ==========================
-
-    /**
-     * Sequencial do ticket (ex: 1, 2, 3...). No front você formata como 0001.
-     * Recomendado ser gerado via sequence ou tabela contador.
-     */
     @Column(name = "numero_ticket", nullable = false)
     private Long numeroTicket;
 
-    /**
-     * Reabertura do ticket.
-     * 0 = ticket original -> "0001"
-     * 1 = primeira reabertura -> "0001-1"
-     * 2 = segunda reabertura -> "0001-2"
-     */
     @Column(name = "reabertura_seq", nullable = false)
     @Builder.Default
     private Integer reaberturaSeq = 0;
 
-    /**
-     * Número exibido (não salva no banco).
-     */
-    @Transient
-    public String getNumeroExibicao() {
-        String base = String.format("%04d", numeroTicket == null ? 0 : numeroTicket);
-        if (reaberturaSeq == null || reaberturaSeq <= 0) return base;
-        return base + "-" + reaberturaSeq;
-    }
+    @Column(name = "numero_exibicao", length = 20)
+    private String numeroExibicao;
 
-    // ==========================
-    // Datas
-    // ==========================
     @Column(name = "criado_em", nullable = false)
     private OffsetDateTime criadoEm;
 
@@ -126,17 +117,30 @@ public class Ticket {
     @Column(name = "fechado_em")
     private OffsetDateTime fechadoEm;
 
+    @Column(name = "primeira_resposta_em")
+    private OffsetDateTime primeiraRespostaEm;
+
     @PrePersist
     public void prePersist() {
         var now = OffsetDateTime.now();
         this.criadoEm = (this.criadoEm == null) ? now : this.criadoEm;
         this.atualizadoEm = (this.atualizadoEm == null) ? now : this.atualizadoEm;
         if (this.reaberturaSeq == null) this.reaberturaSeq = 0;
+        if (this.numeroExibicao == null) {
+            this.numeroExibicao = gerarNumeroExibicao();
+        }
     }
 
     @PreUpdate
     public void preUpdate() {
         this.atualizadoEm = OffsetDateTime.now();
         if (this.reaberturaSeq == null) this.reaberturaSeq = 0;
+        this.numeroExibicao = gerarNumeroExibicao();
+    }
+
+    public String gerarNumeroExibicao() {
+        String base = String.format("%04d", numeroTicket == null ? 0 : numeroTicket);
+        if (reaberturaSeq == null || reaberturaSeq <= 0) return base;
+        return base + "-" + reaberturaSeq;
     }
 }

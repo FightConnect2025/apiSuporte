@@ -5,20 +5,16 @@ import static org.springframework.security.config.Customizer.withDefaults;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
@@ -28,31 +24,35 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.Base64;
-
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.Collections;
-import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
+
+    @Value("${app.swagger.enabled:false}")
+    private boolean swaggerEnabled;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   BearerTokenResolver bearerTokenResolver) throws Exception {
+                                                    BearerTokenResolver bearerTokenResolver) throws Exception {
 
         http
             .cors(withDefaults())
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                if (swaggerEnabled) {
+                    auth.requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll();
+                }
+                auth
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/tickets/exportar/**").authenticated()
+                    .anyRequest().authenticated();
+            })
             .oauth2ResourceServer(oauth2 -> oauth2
-                .bearerTokenResolver(bearerTokenResolver) // ✅ lê do header OU cookie
+                .bearerTokenResolver(bearerTokenResolver)
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
 
@@ -70,11 +70,6 @@ public class SecurityConfig {
         return converter;
     }
 
-    /**
-     * ✅ Resolve token do:
-     * 1) Authorization: Bearer xxx
-     * 2) Cookie AUTH=xxx
-     */
     @Bean
     public BearerTokenResolver bearerTokenResolver() {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
@@ -96,10 +91,6 @@ public class SecurityConfig {
         };
     }
 
-    /**
-     * ✅ Decoder HS256 batendo com o secret da API Auth
-     * properties: jwt.secret
-     */
     @Bean
     public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
         SecretKeySpec key = new SecretKeySpec(secret.trim().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
@@ -116,9 +107,8 @@ public class SecurityConfig {
         ));
 
         config.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-
-        // ⚠️ se você quer usar cookie no browser, precisa:
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-Id", "X-Requested-With"));
+        config.setExposedHeaders(List.of("X-Correlation-Id"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -12,6 +12,6 @@ import br.com.fightConnect.domain.models.entities.TicketMessage;
 public interface TicketMessageRepository extends JpaRepository<TicketMessage, UUID> {
 
     Page<TicketMessage> findByTicket_IdOrderByCriadoEmAsc(UUID ticketId, Pageable pageable);
-    List<TicketMessage> findByTicketIdOrderByCriadoEmAsc(UUID ticketId);
+    List<TicketMessage> findByTicket_IdOrderByCriadoEmAsc(UUID ticketId);
 
 }

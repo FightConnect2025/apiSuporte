@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class AuditoriaProducer {
 
     private final RabbitTemplate rabbitTemplate;
+    private static final Logger log = LoggerFactory.getLogger(AuditoriaProducer.class);
 
     private static final String ROUTING_KEY = "sync.fightconnect.logs.auditoria";
 
@@ -30,7 +33,7 @@ public class AuditoriaProducer {
 
             rabbitTemplate.convertAndSend(ROUTING_KEY, evento);
         } catch (Exception e) {
-            System.err.println("❌ Erro ao enviar log de auditoria (Suporte): " + e.getMessage());
+            log.error("Erro ao enviar log de auditoria (Suporte): {}", e.getMessage());
         }
     }
 

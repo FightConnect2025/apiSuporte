@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f6; margin: 0; padding: 0; }
+  .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center; }
+  .header h1 { color: #e94560; margin: 0; font-size: 24px; }
+  .header p { color: #a0a0b0; margin: 8px 0 0; font-size: 14px; }
+  .content { padding: 32px; }
+  .label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 4px; }
+  .value { color: #1a1a2e; font-size: 16px; margin: 0 0 8px; }
+  .divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+  .desc-box { background: #f8f9fa; border-left: 4px solid #e94560; padding: 16px; border-radius: 4px; margin: 16px 0; }
+  .desc-box p { margin: 0; color: #333; line-height: 1.6; }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-aberto { background: #e3f2fd; color: #1565c0; }
+  .badge-info { background: #f3e5f5; color: #7b1fa2; }
+  .footer { text-align: center; padding: 24px; color: #999; font-size: 12px; border-top: 1px solid #eee; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>FightConnect</h1>
+    <p>Novo Ticket de Suporte</p>
+  </div>
+  <div class="content">
+    <div class="label">Ticket</div>
+    <div class="value" th:text="${ticketNumero}">0001</div>
+
+    <div class="label">Titulo</div>
+    <div class="value" th:text="${titulo}">Titulo do ticket</div>
+
+    <div class="label">Equipe</div>
+    <div class="value" th:text="${equipe}">Nome da equipe</div>
+
+    <div class="label">Usuario</div>
+    <div class="value" th:text="${usuario}">Nome do usuario</div>
+
+    <div class="label" th:if="${categoria}">Categoria</div>
+    <div class="value" th:if="${categoria}" th:text="${categoria}">-</div>
+
+    <div class="label" th:if="${prioridade}">Prioridade</div>
+    <span class="badge badge-info" th:if="${prioridade}" th:text="${prioridade}">Media</span>
+
+    <hr class="divider">
+
+    <div class="label">Status</div>
+    <span class="badge badge-aberto" th:text="${status}">ABERTO</span>
+
+    <div class="label">Descricao</div>
+    <div class="desc-box">
+      <p th:text="${descricao}">Descricao do ticket</p>
+    </div>
+  </div>
+  <div class="footer">
+    Enviado automaticamente pelo sistema FightConnect<br>
+    &copy; 2026 FightConnect
+  </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,5 @@
 package br.com.fightConnect.domain.components;
 
-import java.text.Normalizer;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
@@ -19,13 +18,18 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 
 @Component
-@RequiredArgsConstructor
 public class TicketFotoComponent {
 
     private final FileStorageService storage;
+    private final EquipeFolderComponent equipeFolderComponent;
 
     @PersistenceContext
     private EntityManager em;
+
+    public TicketFotoComponent(FileStorageService storage, EquipeFolderComponent equipeFolderComponent) {
+        this.storage = storage;
+        this.equipeFolderComponent = equipeFolderComponent;
+    }
 
     @Value("${app.foto.max-bytes:5242880}") // 5MB
     private long maxBytes;
@@ -85,7 +89,7 @@ public class TicketFotoComponent {
     // =========================================================
     @Transactional
     public void salvarBase64(UUID ticketId, UUID equipeId, String nomeEquipe, List<String> fotosBase64) {
-        String slug = slugify(nomeEquipe);
+        String slug = equipeFolderComponent.slugify(nomeEquipe);
 
         String folder = (equipeId == null)
                 ? slug
@@ -142,23 +146,6 @@ public class TicketFotoComponent {
         String h = host.trim();
         if (h.isBlank()) return "";
         return h.endsWith("/") ? h.substring(0, h.length() - 1) : h;
-    }
-
-    private String slugify(String input) {
-        if (input == null || input.isBlank()) return "equipe-sem-nome";
-
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-
-        String slug = normalized
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9]+", "-")
-                .replaceAll("(^-+|-+$)", "");
-
-        if (slug.isBlank()) slug = "equipe-sem-nome";
-        if (slug.length() > 60) slug = slug.substring(0, 60);
-
-        return slug;
     }
 
     private String sanitizeFolder(String folder) {

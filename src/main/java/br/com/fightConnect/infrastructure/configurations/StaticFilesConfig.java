@@ -13,7 +13,7 @@ public class StaticFilesConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
+        registry.addResourceHandler("/tickets/**")
                 .addResourceLocations("file:" + basePath + "/");
     }
 }

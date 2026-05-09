@@ -7,6 +7,8 @@ import java.nio.file.StandardOpenOption;
 import java.text.Normalizer;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import br.com.fightConnect.domain.contracts.services.FileStorageService;
@@ -66,6 +68,24 @@ public class LocalFileStorageService implements FileStorageService {
             if (!target.startsWith(base)) return;
             Files.deleteIfExists(target);
         } catch (Exception ignored) { }
+    }
+
+    public Resource carregarComoResource(String fileName, String folder) {
+        try {
+            String cleanFolder = sanitizeFolder(folder);
+            String cleanFile = sanitizeFileName(fileName);
+            String fileKey = cleanFolder + "/" + cleanFile;
+
+            Path base = Paths.get(basePath).toAbsolutePath().normalize();
+            Path target = base.resolve(fileKey).normalize();
+
+            if (!target.startsWith(base)) return null;
+            if (!Files.exists(target) || !Files.isReadable(target)) return null;
+
+            return new FileSystemResource(target);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String sanitizeFolder(String folder) {

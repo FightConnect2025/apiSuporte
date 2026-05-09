@@ -23,6 +23,6 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecif
     Page<Ticket> findByEquipeIdAndStatusIn(UUID equipeId, List<TicketStatus> status, Pageable pageable);
     Page<Ticket> findByStatusIn(List<TicketStatus> status, Pageable pageable);
 
-    @Query(value = "select coalesce(max(numero_ticket),0) + 1 from tickets", nativeQuery = true)
+    @Query(value = "SELECT nextval('ticket_num_seq')", nativeQuery = true)
     Long nextNumeroTicket();
 }
