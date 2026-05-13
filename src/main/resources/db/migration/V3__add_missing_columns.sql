@@ -1,0 +1,34 @@
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS categoria VARCHAR(30);
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS prioridade VARCHAR(10);
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS atendente_id UUID;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS atendente_nome VARCHAR(200);
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS reabertura_seq INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS numero_exibicao VARCHAR(20);
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS primeira_resposta_em TIMESTAMP WITH TIME ZONE;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS polano_id UUID;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS fechado_em TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS ix_ticket_atendente ON tickets(atendente_id);
+
+ALTER TABLE ticket_messages ADD COLUMN IF NOT EXISTS autor_nome VARCHAR(200);
+ALTER TABLE ticket_messages ADD COLUMN IF NOT EXISTS equipe_nome VARCHAR(200);
+
+ALTER TABLE ticket_feedback ADD COLUMN IF NOT EXISTS comentario TEXT;
+
+ALTER TABLE webhook_configs ADD COLUMN IF NOT EXISTS segredo VARCHAR(255);
+ALTER TABLE webhook_configs ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS ix_webhook_equipe ON webhook_configs(equipe_id);
+
+ALTER TABLE respostas_rapidas ADD COLUMN IF NOT EXISTS atalho VARCHAR(50);
+ALTER TABLE respostas_rapidas ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS ix_resposta_equipe ON respostas_rapidas(equipe_id);
+
+ALTER TABLE artigos ADD COLUMN IF NOT EXISTS tags VARCHAR(500);
+ALTER TABLE artigos ADD COLUMN IF NOT EXISTS categoria VARCHAR(50);
+ALTER TABLE artigos ADD COLUMN IF NOT EXISTS ordem INTEGER DEFAULT 0;
+ALTER TABLE artigos ADD COLUMN IF NOT EXISTS atualizado_em TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS ix_artigo_publicado ON artigos(publicado);
+CREATE INDEX IF NOT EXISTS ix_artigo_equipe ON artigos(equipe_id);
