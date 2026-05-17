@@ -30,4 +30,6 @@ public class LogAuditoriaEvent {
     private String stackTrace;
     private String className;
     private String methodName;
+    private UUID professorId;
+    private UUID unidadeId;
 }

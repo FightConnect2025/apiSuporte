@@ -74,6 +74,8 @@ public class AuditAspect {
 
         String usuarioId = null;
         String equipeId = null;
+        String professorId = null;
+        String unidadeId = null;
         String nomeUsuario = null;
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -81,6 +83,10 @@ public class AuditAspect {
             usuarioId = jwt.getSubject();
             String equipeIdStr = jwt.getClaimAsString("equipeId");
             if (equipeIdStr != null) equipeId = equipeIdStr;
+            String professorIdStr = jwt.getClaimAsString("professorId");
+            if (professorIdStr != null) professorId = professorIdStr;
+            String unidadeIdStr = jwt.getClaimAsString("unidadeId");
+            if (unidadeIdStr != null) unidadeId = unidadeIdStr;
             nomeUsuario = jwt.getClaimAsString("nome");
             if (nomeUsuario == null) nomeUsuario = jwt.getClaimAsString("email");
         }
@@ -119,6 +125,8 @@ public class AuditAspect {
                 .correlationId(correlationId)
                 .usuarioId(safeUuid(usuarioId))
                 .equipeId(safeUuid(equipeId))
+                .professorId(safeUuid(professorId))
+                .unidadeId(safeUuid(unidadeId))
                 .nomeUsuario(nomeUsuario)
                 .metodoHttp(request.getMethod())
                 .url(request.getRequestURI())
