@@ -110,7 +110,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar ticket")
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public TicketResponseDTO atualizar(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketRequestDTO dto
@@ -120,7 +120,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar status (NAO finaliza; para RESOLVIDO/FECHADO use /finalizar)")
     @PatchMapping(value = "/{id}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public TicketResponseDTO atualizarStatus(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketStatusRequestDTO dto
@@ -130,7 +130,7 @@ public class TicketController {
 
     @Operation(summary = "Deletar ticket (requer perfil ADMIN)")
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletar(@PathVariable @NotNull UUID id) {
         ticketService.deletar(id);
@@ -208,7 +208,7 @@ public class TicketController {
 
     @Operation(summary = "Exportar tickets filtrados como CSV")
     @GetMapping("/exportar/csv")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public String exportarCsv(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) UUID equipeId,
