@@ -598,11 +598,11 @@ public class TicketServiceImpl implements TicketService {
             var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             return auth != null && auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
-                            || a.getAuthority().equals("ROLE_SUPERADMIN"));
-        } catch (Exception ignored) {}
-        return false;
+                            || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        } catch (Exception ignored) {
+            return false;
+        }
     }
-
     private void validarAcessoTicket(Ticket ticket) {
         if (isAdminDoToken()) return;
         UUID equipeIdToken = getEquipeIdDoToken();

@@ -65,6 +65,7 @@ public class SecurityConfig {
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             String perfil = jwt.getClaimAsString("perfil");
             if (perfil == null || perfil.isBlank()) return Collections.emptyList();
+            // PADRAO TASK-03B: claim "perfil" mapeado para ROLE_{perfil}
             return List.of(new SimpleGrantedAuthority("ROLE_" + perfil));
         });
         return converter;
