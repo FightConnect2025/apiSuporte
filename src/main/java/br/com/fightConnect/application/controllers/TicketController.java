@@ -12,6 +12,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
@@ -62,6 +63,7 @@ public class TicketController {
 
     @Operation(summary = "Criar ticket")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     public TicketResponseDTO criar(
             @RequestBody @Valid CreateTicketRequestDTO dto,
@@ -72,12 +74,14 @@ public class TicketController {
 
     @Operation(summary = "Buscar ticket por id")
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public TicketResponseDTO buscarPorId(@PathVariable @NotNull UUID id) {
         return ticketService.buscarPorId(id);
     }
 
     @Operation(summary = "Listar tickets (filtros opcionais: equipeId, periodo)")
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public Page<TicketResponseDTO> listar(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) UUID equipeId,
@@ -106,6 +110,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar ticket")
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public TicketResponseDTO atualizar(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketRequestDTO dto
@@ -115,6 +120,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar status (NAO finaliza; para RESOLVIDO/FECHADO use /finalizar)")
     @PatchMapping(value = "/{id}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public TicketResponseDTO atualizarStatus(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketStatusRequestDTO dto
@@ -124,6 +130,7 @@ public class TicketController {
 
     @Operation(summary = "Deletar ticket (requer perfil ADMIN)")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletar(@PathVariable @NotNull UUID id) {
         ticketService.deletar(id);
@@ -131,12 +138,14 @@ public class TicketController {
 
     @Operation(summary = "Listar mensagens do ticket")
     @GetMapping("/{ticketId}/mensagens")
+    @PreAuthorize("isAuthenticated()")
     public List<TicketMessageResponseDTO> listarMensagens(@PathVariable @NotNull UUID ticketId) {
         return ticketService.listar(ticketId);
     }
 
     @Operation(summary = "Adicionar mensagem ao ticket (autorId extraido do JWT)")
     @PostMapping(value = "/{ticketId}/mensagens", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
     public TicketMessageResponseDTO adicionarMensagem(
             @PathVariable @NotNull UUID ticketId,
@@ -148,6 +157,7 @@ public class TicketController {
 
     @Operation(summary = "Responder e finalizar (autorId extraido do JWT)")
     @PostMapping(value = "/{ticketId}/finalizar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void responderEFinalizar(
             @PathVariable @NotNull UUID ticketId,
@@ -159,6 +169,7 @@ public class TicketController {
 
     @Operation(summary = "Marcar ticket como lido (usuarioId extraido do JWT)")
     @PostMapping(value = "/{ticketId}/read")
+    @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void marcarComoLido(
             @PathVariable @NotNull UUID ticketId,
@@ -169,6 +180,7 @@ public class TicketController {
 
     @Operation(summary = "Servir imagem de ticket com verificacao de acesso")
     @GetMapping("/{ticketId}/imagens/{imagemId}")
+    @PreAuthorize("isAuthenticated()")
     public TicketFotoResponseDTO buscarImagem(
             @PathVariable @NotNull UUID ticketId,
             @PathVariable @NotNull UUID imagemId
@@ -178,6 +190,7 @@ public class TicketController {
 
     @Operation(summary = "Servir arquivo de imagem (streaming autenticado)")
     @GetMapping("/{ticketId}/imagens/{imagemId}/arquivo")
+    @PreAuthorize("isAuthenticated()")
     public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> servirImagem(
             @PathVariable @NotNull UUID ticketId,
             @PathVariable @NotNull UUID imagemId
@@ -195,6 +208,7 @@ public class TicketController {
 
     @Operation(summary = "Exportar tickets filtrados como CSV")
     @GetMapping("/exportar/csv")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public String exportarCsv(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) UUID equipeId,
