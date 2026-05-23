@@ -65,10 +65,16 @@ public class SecurityConfig {
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
             String perfil = jwt.getClaimAsString("perfil");
             if (perfil == null || perfil.isBlank()) return Collections.emptyList();
-            // PADRAO TASK-03B: claim "perfil" mapeado para ROLE_{perfil}
-            return List.of(new SimpleGrantedAuthority("ROLE_" + perfil));
+            String role = normalizarRole(perfil);
+            return List.of(new SimpleGrantedAuthority("ROLE_" + role));
         });
         return converter;
+    }
+
+    private String normalizarRole(String perfil) {
+        if ("ADMINISTRADOR".equals(perfil)) return "ADMIN";
+        if ("SUPERADMIN".equals(perfil)) return "SUPER_ADMIN";
+        return perfil;
     }
 
     @Bean

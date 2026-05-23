@@ -57,6 +57,13 @@ public class TicketController {
 
     private UUID extractUserId(Jwt jwt) {
         if (jwt == null) return null;
+        Object usuarioIdClaim = jwt.getClaims().get("usuarioId");
+        if (usuarioIdClaim != null) {
+            try {
+                return UUID.fromString(usuarioIdClaim.toString());
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
         String sub = jwt.getSubject();
         return sub != null ? UUID.fromString(sub) : null;
     }
@@ -120,7 +127,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar status (NAO finaliza; para RESOLVIDO/FECHADO use /finalizar)")
     @PatchMapping(value = "/{id}/status", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUPER_GESTOR')")
     public TicketResponseDTO atualizarStatus(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketStatusRequestDTO dto
@@ -128,9 +135,9 @@ public class TicketController {
         return ticketService.atualizarStatus(id, dto.status());
     }
 
-    @Operation(summary = "Deletar ticket (requer perfil ADMIN)")
+    @Operation(summary = "Deletar ticket")
     @DeleteMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUPER_GESTOR')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletar(@PathVariable @NotNull UUID id) {
         ticketService.deletar(id);
@@ -208,7 +215,7 @@ public class TicketController {
 
     @Operation(summary = "Exportar tickets filtrados como CSV")
     @GetMapping("/exportar/csv")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUPER_GESTOR')")
     public String exportarCsv(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) UUID equipeId,
