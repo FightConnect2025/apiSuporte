@@ -20,7 +20,7 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("FightConnect - API de Suporte")
+                        .title("FightConnect Suporte")
                         .description("API de tickets de suporte, mensagens, anexos, notificacoes, feedback, base de conhecimento e respostas rapidas.")
                         .version("v2"))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))

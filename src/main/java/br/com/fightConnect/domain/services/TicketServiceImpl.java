@@ -76,6 +76,13 @@ public class TicketServiceImpl implements TicketService {
     public TicketResponseDTO criar(CreateTicketRequestDTO dto, UUID usuarioIdJwt) {
         validateCreate(dto);
 
+        if (usuarioIdJwt == null)
+            throw badRequest("usuarioId do JWT e obrigatorio");
+        if (!dto.usuarioId().equals(usuarioIdJwt) && !isAdminDoToken()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "usuarioId nao corresponde ao usuario autenticado");
+        }
+
         String nomeEquipe = defaultIfBlank(dto.nomeEquipe(), null);
         String nomePlano = defaultIfBlank(dto.nomePlano(), null);
 
@@ -318,6 +325,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "ticketsList", allEntries = true)
     public void salvarFeedback(UUID ticketId, int nota, String comentario) {
         if (nota < 1 || nota > 5) {
             throw badRequest("Nota deve ser entre 1 e 5");
@@ -332,7 +340,7 @@ public class TicketServiceImpl implements TicketService {
         TicketFeedback feedback = TicketFeedback.builder()
                 .ticketId(ticketId)
                 .nota(nota)
-                .comentario(comentario)
+                .comentario(htmlSanitizer.sanitizeKeepNewlines(comentario))
                 .build();
         feedbackRepo.save(feedback);
     }
@@ -352,6 +360,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "ticketsList", allEntries = true)
     public TicketMessageResponseDTO adicionar(UUID ticketId, UUID autorUsuarioId, CreateTicketMessageRequestDTO dto) {
         if (ticketId == null)
             throw badRequest("ticketId e obrigatorio");
@@ -404,6 +413,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "ticketsList", allEntries = true)
     public void responderEFinalizar(UUID ticketId, UUID autorUsuarioId, FinalizarTicketRequestDTO dto) {
         if (ticketId == null)
             throw badRequest("ticketId e obrigatorio");
@@ -458,6 +468,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "ticketsList", allEntries = true)
     public void marcarComoLido(UUID ticketId, UUID usuarioId) {
         if (ticketId == null)
             throw badRequest("ticketId e obrigatorio");

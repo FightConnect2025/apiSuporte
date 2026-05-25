@@ -62,6 +62,7 @@ public class RateLimitingFilter implements Filter {
         if (path == null) return false;
         if (path.contains("/api/tickets") && method.equalsIgnoreCase("POST")) return true;
         if (path.contains("/api/tickets") && path.contains("/mensagens") && method.equalsIgnoreCase("POST")) return true;
+        if (path.contains("/api/tickets") && path.contains("/finalizar") && method.equalsIgnoreCase("POST")) return true;
         return false;
     }
 

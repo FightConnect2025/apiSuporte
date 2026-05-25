@@ -15,7 +15,9 @@ import org.springframework.web.server.ResponseStatusException;
 import br.com.fightConnect.infrastructure.messaging.AuditoriaProducer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @ControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
@@ -82,7 +84,7 @@ public class GlobalExceptionHandler {
                 detalhes
             );
         } catch (Exception e) {
-            System.err.println("⚠️ Falha ao enviar log de erro de auditoria (Suporte): " + e.getMessage());
+            log.warn("Falha ao enviar log de erro de auditoria (Suporte): {}", e.getMessage());
         }
     }
 

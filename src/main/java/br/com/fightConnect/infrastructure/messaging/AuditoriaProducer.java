@@ -19,6 +19,7 @@ public class AuditoriaProducer {
     private final RabbitTemplate rabbitTemplate;
     private static final Logger log = LoggerFactory.getLogger(AuditoriaProducer.class);
 
+    private static final String EXCHANGE_SYNC = "sync.fightconnect";
     private static final String ROUTING_KEY = "sync.fightconnect.logs.auditoria";
 
     public void enviarEvento(String tipo, String entidade, UUID usuarioId, String descricao, Map<String, Object> detalhes) {
@@ -31,7 +32,7 @@ public class AuditoriaProducer {
             evento.put("dados", detalhes);
             evento.put("criadoEm", LocalDateTime.now());
 
-            rabbitTemplate.convertAndSend(ROUTING_KEY, evento);
+            rabbitTemplate.convertAndSend(EXCHANGE_SYNC, ROUTING_KEY, evento);
         } catch (Exception e) {
             log.error("Erro ao enviar log de auditoria (Suporte): {}", e.getMessage());
         }

@@ -8,6 +8,7 @@ import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +18,7 @@ public class HealthCheckConfig implements HealthIndicator {
 
     private final JdbcTemplate jdbc;
     private final RabbitTemplate rabbitTemplate;
+    private final WebClient apiAuthWebClient;
 
     @Override
     public Health health() {
@@ -36,6 +38,18 @@ public class HealthCheckConfig implements HealthIndicator {
             details.put("rabbitmq", "UP");
         } catch (Exception e) {
             details.put("rabbitmq", "DOWN - " + e.getMessage());
+            up = false;
+        }
+
+        try {
+            apiAuthWebClient.get()
+                    .uri("/actuator/health")
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block();
+            details.put("apiAuth", "UP");
+        } catch (Exception e) {
+            details.put("apiAuth", "DOWN - " + e.getMessage());
             up = false;
         }
 

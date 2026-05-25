@@ -6,6 +6,7 @@ import br.com.fightConnect.infrastructure.audit.PayloadSanitizer;
 import br.com.fightConnect.infrastructure.streaming.LogAuditoriaEvent;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -61,7 +63,7 @@ public class AuditAspect {
             try {
                 sendAuditLog(joinPoint, duration, error, result, contexto);
             } catch (Exception e) {
-                System.err.println("⚠️ Falha ao enviar log de auditoria (Suporte): " + e.getMessage());
+                log.warn("Falha ao enviar log de auditoria (Suporte): {}", e.getMessage());
             }
         }
     }
