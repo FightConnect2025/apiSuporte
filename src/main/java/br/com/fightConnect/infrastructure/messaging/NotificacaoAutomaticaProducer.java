@@ -79,7 +79,6 @@ public class NotificacaoAutomaticaProducer {
         } catch (Exception e) {
             log.error("❌ RabbitMQ SEND: falhou ao publicar (fila={}, corrId={}) -> {}",
                     FILA_NOTIFICACAO, corrId, e.getMessage(), e);
-            throw e;
         }
     }
 

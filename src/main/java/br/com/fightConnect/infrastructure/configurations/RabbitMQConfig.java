@@ -1,11 +1,6 @@
 package br.com.fightConnect.infrastructure.configurations;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -24,28 +19,8 @@ public class RabbitMQConfig {
     public static final String DLX_NOTIFICACAO = "notificacao.automatica.dlx";
 
     @Bean
-    public Queue notificacaoAutomaticaQueue() {
-        return QueueBuilder.durable(FILA_NOTIFICACAO)
-                .deadLetterExchange(DLX_NOTIFICACAO)
-                .deadLetterRoutingKey(DLQ_NOTIFICACAO)
-                .build();
-    }
-
-    @Bean
-    public Queue dlqNotificacao() {
-        return QueueBuilder.durable(DLQ_NOTIFICACAO).build();
-    }
-
-    @Bean
     public DirectExchange dlxNotificacao() {
         return new DirectExchange(DLX_NOTIFICACAO);
-    }
-
-    @Bean
-    public Binding dlqBinding() {
-        return BindingBuilder.bind(dlqNotificacao())
-                .to(dlxNotificacao())
-                .with(DLQ_NOTIFICACAO);
     }
 
     @Bean
