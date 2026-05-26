@@ -12,6 +12,7 @@ import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -96,7 +98,9 @@ public class AuditAspect {
         String correlationId = MDC.get("correlationId");
         if (correlationId == null) correlationId = UUID.randomUUID().toString();
 
-        String nivelLog = error != null ? "ERROR" : "INFO";
+        Integer httpStatus = extractHttpStatus(result);
+        boolean requestFailed = error != null || (httpStatus != null && httpStatus >= 400);
+        String nivelLog = requestFailed ? "ERROR" : "INFO";
         String warningType = null;
 
         if (duration > WARNING_DURATION_MS) {
@@ -107,21 +111,28 @@ public class AuditAspect {
         if (error != null && isUnauthorizedError(error)) {
             warningType = "ACESSO_NEGADO";
             nivelLog = "WARNING";
+        } else if (httpStatus != null && (httpStatus == 401 || httpStatus == 403)) {
+            warningType = "ACESSO_NEGADO";
+            nivelLog = "WARNING";
         }
 
         Map<String, Object> payload = new HashMap<>();
-        Object[] args = joinPoint.getArgs();
-        if (args != null && args.length > 0 && args[0] != null) {
-            payload.put("requestPayload", payloadSanitizer.sanitize(args[0]));
+        Object payloadArg = firstAuditableArgument(joinPoint.getArgs());
+        if (payloadArg != null) {
+            payload.put("requestPayload", payloadSanitizer.sanitize(payloadArg));
         }
 
         if (result != null && error == null) {
             payload = contextEnricher.enrichWithEntity("SUPORTE_TICKET", result, payload);
         }
 
+        String tipoAcao = resolveTipoAcao(request, joinPoint, contexto);
+
         Map<String, String> headers = extractImportantHeaders(request);
 
-        String descricao = error != null ? "ERRO: " + error.getMessage() : "Ação Suporte: " + joinPoint.getSignature().getName();
+        String descricao = requestFailed
+                ? "Falha em " + tipoAcao + (error != null ? ": " + error.getMessage() : " HTTP " + httpStatus)
+                : "Acao executada: " + tipoAcao;
 
         LogAuditoriaEvent event = LogAuditoriaEvent.builder()
                 .correlationId(correlationId)
@@ -134,7 +145,7 @@ public class AuditAspect {
                 .url(request.getRequestURI())
                 .ip(getIp(request))
                 .userAgent(request.getHeader("User-Agent"))
-                .tipo(error == null ? "SUCESSO" : "ERRO")
+                .tipo(tipoAcao)
                 .nivelLog(nivelLog)
                 .warningType(warningType)
                 .entidade("SUPORTE_TICKET")
@@ -148,6 +159,35 @@ public class AuditAspect {
                 .build();
 
         rabbitTemplate.convertAndSend("sync.fightconnect", "sync.fightconnect.logs.auditoria", event);
+    }
+
+
+    private Integer extractHttpStatus(Object result) {
+        if (result instanceof ResponseEntity<?> response) {
+            return response.getStatusCode().value();
+        }
+        return null;
+    }
+
+    private String resolveTipoAcao(HttpServletRequest request, ProceedingJoinPoint joinPoint, String contexto) {
+        if ("LEITURA_SENSIVEL".equals(contexto)) return "LEITURA_SENSIVEL";
+
+        String method = request.getMethod();
+        if ("POST".equalsIgnoreCase(method)) return "CRIAR";
+        if ("PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) return "ATUALIZAR";
+        if ("DELETE".equalsIgnoreCase(method)) return "EXCLUIR";
+
+        return joinPoint.getSignature().getName().toUpperCase(Locale.ROOT);
+    }
+
+    private Object firstAuditableArgument(Object[] args) {
+        if (args == null) return null;
+        for (Object arg : args) {
+            if (arg == null) continue;
+            if (arg instanceof HttpServletRequest) continue;
+            return arg;
+        }
+        return null;
     }
 
     private Map<String, String> extractImportantHeaders(HttpServletRequest request) {
