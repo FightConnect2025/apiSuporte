@@ -32,6 +32,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.Collections;
+import java.util.stream.Collectors;
+
+import br.com.fightConnect.infrastructure.security.HybridJwtDecoder;
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
 
 @Configuration
 @EnableMethodSecurity
@@ -93,10 +97,28 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         var converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            // Tenta perfil do JWT legado primeiro
             String perfil = jwt.getClaimAsString("perfil");
-            if (perfil == null || perfil.isBlank()) return Collections.emptyList();
-            String role = normalizarRole(perfil);
-            return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+            if (perfil != null && !perfil.isBlank()) {
+                String role = JwtClaimsAdapter.normalizarRole(perfil);
+                return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+            }
+
+            // Keycloak: realm_access.roles
+            @SuppressWarnings("unchecked")
+            var realmAccess = jwt.getClaim("realm_access");
+            if (realmAccess instanceof java.util.Map<?, ?> map) {
+                Object roles = map.get("roles");
+                if (roles instanceof java.util.List<?> list) {
+                    return list.stream()
+                            .map(Object::toString)
+                            .map(JwtClaimsAdapter::normalizarRole)
+                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                            .collect(Collectors.toList());
+                }
+            }
+
+            return Collections.emptyList();
         });
         return converter;
     }
@@ -129,9 +151,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        SecretKeySpec key = new SecretKeySpec(secret.trim().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).build();
+    public JwtDecoder jwtDecoder(
+            @Value("${jwt.secret}") String secret,
+            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri,
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri) {
+        return new HybridJwtDecoder(secret, jwkSetUri, issuerUri);
     }
 
     @Bean
