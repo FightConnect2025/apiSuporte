@@ -13,32 +13,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (cached)
+        uses: docker/build-push-action@v5
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          context: .
+          push: false
+          tags: fightconnect/api-suporte:homolog
+          build-args: |
+            PROFILE=homolog
+            PORT=7086
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/api-suporte-homolog.tar
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+      - name: Compress image
+        run: gzip -f /tmp/api-suporte-homolog.tar && mv /tmp/api-suporte-homolog.tar.gz ./api-suporte-homolog.tar.gz
 
-      - name: Prepare JAR
-        run: cp target/apiSuporte-*.jar apiSuporte-0.0.1-SNAPSHOT.jar
-
-      - name: Copy JAR to VPS
+      - name: Copy image and compose to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "apiSuporte-0.0.1-SNAPSHOT.jar"
+          source: "docker-compose.yml,api-suporte-homolog.tar.gz"
           target: "/opt/fightconnect-homolog/api-suporte/"
+          strip_components: 0
 
-      - name: Restart API service
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            systemctl restart api-suporte-homolog.service
+            cd /opt/fightconnect-homolog/api-suporte
+            docker load < api-suporte-homolog.tar.gz
+            if [ -f config/.env ]; then
+              docker compose --env-file config/.env up -d
+            else
+              docker compose up -d
+            fi
+            rm -f api-suporte-homolog.tar.gz
+            docker image prune -f

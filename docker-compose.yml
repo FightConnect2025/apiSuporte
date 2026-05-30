@@ -1,55 +1,57 @@
-version: "3.9"
-
 services:
   postgres-suporte:
     image: postgres:15
     container_name: postgres-suporte
-    restart: unless-stopped
+    restart: always
+    # Banco interno — porta NAO exposta no host para evitar conflito com postgres de prod
     environment:
       POSTGRES_DB: helpdesk
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: coti
-    ports:
-      - "5435:5432"   # host:container (pra você acessar do seu PC)
     volumes:
       - suporte_pgdata:/var/lib/postgresql/data
     networks:
       - fightconnect-network
+      - fightconnect-homolog-net
 
   api-suporte:
-    build: .
+    image: fightconnect/api-suporte:homolog
+    build:
+      context: .
+      args:
+        PROFILE: homolog
+        PORT: 7086
     container_name: api-suporte
     restart: unless-stopped
     depends_on:
       - postgres-suporte
     ports:
-      - "8086:8086"
+      - "${API_PORT:-7086}:7086"
+    env_file:
+      - config/.env
     environment:
-      SPRING_PROFILES_ACTIVE: dev
-
-      # ✅ DB: dentro do docker usa o nome do serviço e porta 5432
+      # Overrides Docker-only (o .env da VPS aponta para localhost)
+      SERVER_PORT: 7086
+      SPRING_PROFILES_ACTIVE: homolog
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-suporte:5432/helpdesk
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: coti
-
-      # ✅ Rabbit já existente no HOST (Windows)
+      REDIS_HOST: redis-homolog
+      REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: host.docker.internal
       SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
-
-      # (opcional) se essa API auth roda no host, mantém assim.
-      # se ela roda em outro container, aí tem que ajustar (ver abaixo)
-      API_AUTH_BASE_URL: https://host.docker.internal:8081
-
-      # ✅ storage no container (se você usa path Windows no properties, isso quebra no Linux do container)
-      # então sobrescreve para path linux dentro do container:
+      API_AUTH_URL: http://host.docker.internal:7081
+      API_FIGHT_URL: http://host.docker.internal:7082
+      API_FINANCEIRO_URL: http://host.docker.internal:7084
+      API_LOGS_URL: http://host.docker.internal:7083
       APP_STORAGE_BASE_PATH: /data/images
     volumes:
-      # mapeia uma pasta do host pra dentro do container (troca o caminho do host se quiser)
       - ./images:/data/images
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - fightconnect-network
+      - fightconnect-homolog-net
 
 volumes:
   suporte_pgdata:
@@ -57,3 +59,5 @@ volumes:
 networks:
   fightconnect-network:
     driver: bridge
+  fightconnect-homolog-net:
+    external: true
