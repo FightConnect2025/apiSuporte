@@ -38,6 +38,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: coti
       REDIS_HOST: redis-homolog
       REDIS_PORT: 6379
+      KEYCLOAK_ISSUER_URI: https://homologacao.fightconnect.com.br/realms/fightconnect-homolog
+      KEYCLOAK_JWK_SET_URI: https://homologacao.fightconnect.com.br/auth/realms/fightconnect-homolog/protocol/openid-connect/certs
       SPRING_RABBITMQ_HOST: host.docker.internal
       SPRING_RABBITMQ_PORT: 5672
       API_AUTH_URL: http://host.docker.internal:7081
