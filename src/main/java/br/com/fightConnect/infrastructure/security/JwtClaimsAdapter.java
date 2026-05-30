@@ -41,6 +41,9 @@ public final class JwtClaimsAdapter {
         String perfil = jwt.getClaimAsString("perfil");
         if (StringUtils.hasText(perfil)) return normalizarRole(perfil);
 
+        String perfilUsuario = jwt.getClaimAsString("perfil_usuario");
+        if (StringUtils.hasText(perfilUsuario)) return normalizarRole(perfilUsuario);
+
         @SuppressWarnings("unchecked")
         var realmAccess = jwt.getClaim("realm_access");
         if (realmAccess instanceof java.util.Map<?, ?> map) {

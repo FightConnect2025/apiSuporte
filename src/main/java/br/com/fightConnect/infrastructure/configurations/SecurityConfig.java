@@ -26,7 +26,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import br.com.fightConnect.infrastructure.security.HybridJwtDecoder;
@@ -93,28 +95,45 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         var converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            // Tenta perfil do JWT legado primeiro
-            String perfil = jwt.getClaimAsString("perfil");
-            if (perfil != null && !perfil.isBlank()) {
-                String role = JwtClaimsAdapter.normalizarRole(perfil);
-                return List.of(new SimpleGrantedAuthority("ROLE_" + role));
-            }
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
 
-            // Keycloak: realm_access.roles
-            @SuppressWarnings("unchecked")
-            var realmAccess = jwt.getClaim("realm_access");
-            if (realmAccess instanceof java.util.Map<?, ?> map) {
-                Object roles = map.get("roles");
-                if (roles instanceof java.util.List<?> list) {
-                    return list.stream()
-                            .map(Object::toString)
-                            .map(JwtClaimsAdapter::normalizarRole)
-                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                            .collect(Collectors.toList());
+            // 1. realm_access.roles
+            Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+            if (realmAccess != null && realmAccess.containsKey("roles")) {
+                @SuppressWarnings("unchecked")
+                List<String> roles = (List<String>) realmAccess.get("roles");
+                for (String role : roles) {
+                    if (!role.startsWith("default-roles-")) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_" + JwtClaimsAdapter.normalizarRole(role)));
+                    }
                 }
             }
 
-            return Collections.emptyList();
+            // 2. perfil_usuario / perfil (claim customizada do FightConnect)
+            String perfil = jwt.getClaimAsString("perfil_usuario");
+            if (perfil == null || perfil.isBlank()) {
+                perfil = jwt.getClaimAsString("perfil");
+            }
+            if (perfil != null && !perfil.isBlank()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_" + JwtClaimsAdapter.normalizarRole(perfil)));
+            }
+
+            // 3. resource_access.*.roles
+            Map<String, Object> resourceAccess = jwt.getClaimAsMap("resource_access");
+            if (resourceAccess != null) {
+                for (Map.Entry<String, Object> entry : resourceAccess.entrySet()) {
+                    if (entry.getValue() instanceof Map<?, ?> resource) {
+                        Object roles = resource.get("roles");
+                        if (roles instanceof List<?> list) {
+                            for (Object role : list) {
+                                authorities.add(new SimpleGrantedAuthority("ROLE_" + JwtClaimsAdapter.normalizarRole(role.toString())));
+                            }
+                        }
+                    }
+                }
+            }
+
+            return authorities.stream().distinct().collect(Collectors.toList());
         });
         return converter;
     }
