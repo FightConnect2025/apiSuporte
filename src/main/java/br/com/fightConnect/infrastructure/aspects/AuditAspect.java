@@ -24,6 +24,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
+
 @Slf4j
 @Aspect
 @Component
@@ -84,15 +86,16 @@ public class AuditAspect {
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-            usuarioId = jwt.getSubject();
-            String equipeIdStr = jwt.getClaimAsString("equipeId");
-            if (equipeIdStr != null) equipeId = equipeIdStr;
+            UUID uid = JwtClaimsAdapter.usuarioId(jwt);
+            if (uid != null) usuarioId = uid.toString();
+            UUID eid = JwtClaimsAdapter.equipeId(jwt);
+            if (eid != null) equipeId = eid.toString();
             String professorIdStr = jwt.getClaimAsString("professorId");
             if (professorIdStr != null) professorId = professorIdStr;
             String unidadeIdStr = jwt.getClaimAsString("unidadeId");
             if (unidadeIdStr != null) unidadeId = unidadeIdStr;
-            nomeUsuario = jwt.getClaimAsString("nome");
-            if (nomeUsuario == null) nomeUsuario = jwt.getClaimAsString("email");
+            nomeUsuario = JwtClaimsAdapter.nome(jwt);
+            if (nomeUsuario == null) nomeUsuario = JwtClaimsAdapter.email(jwt);
         }
 
         String correlationId = MDC.get("correlationId");

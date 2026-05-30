@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,6 +21,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.fightConnect.domain.components.TicketFotoPorEquipeComponent;
@@ -94,6 +99,22 @@ class TicketServiceImplTest {
                 .criadoEm(OffsetDateTime.now())
                 .atualizadoEm(OffsetDateTime.now())
                 .build();
+
+        mockSecurityContext(equipeId);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void mockSecurityContext(UUID equipeId) {
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("equipeId", equipeId.toString())
+                .build();
+        var auth = new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
     @Nested

@@ -142,6 +142,11 @@ public class TicketServiceImpl implements TicketService {
             List<TicketStatus> status, OffsetDateTime dataInicio, OffsetDateTime dataFim, Pageable pageable) {
 
         UUID equipeIdToken = isAdminDoToken() ? null : getEquipeIdDoToken();
+
+        if (!isAdminDoToken() && equipeIdToken == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "equipeId nao disponivel no token");
+        }
+
         UUID equipeParaFiltrar = equipeId;
 
         if (equipeIdToken != null) {
@@ -285,7 +290,16 @@ public class TicketServiceImpl implements TicketService {
     public String exportarCsv(UUID usuarioId, UUID equipeId, List<TicketStatus> status,
             OffsetDateTime dataInicio, OffsetDateTime dataFim) {
         UUID equipeIdToken = isAdminDoToken() ? null : getEquipeIdDoToken();
+
+        if (!isAdminDoToken() && equipeIdToken == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "equipeId nao disponivel no token");
+        }
+
         UUID equipeParaFiltrar = equipeId != null ? equipeId : equipeIdToken;
+
+        if (equipeIdToken != null && equipeId != null && !equipeId.equals(equipeIdToken)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Nao e permitido exportar tickets de outra equipe.");
+        }
 
         Specification<Ticket> spec = TicketSpecifications.filtro(usuarioId, equipeParaFiltrar, status, dataInicio, dataFim);
         List<Ticket> tickets = repo.findAll(spec);
@@ -597,8 +611,7 @@ public class TicketServiceImpl implements TicketService {
         try {
             var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-                String equipeIdStr = jwt.getClaimAsString("equipeId");
-                if (equipeIdStr != null) return UUID.fromString(equipeIdStr);
+                return br.com.fightConnect.infrastructure.security.JwtClaimsAdapter.equipeId(jwt);
             }
         } catch (Exception ignored) {}
         return null;
@@ -617,7 +630,10 @@ public class TicketServiceImpl implements TicketService {
     private void validarAcessoTicket(Ticket ticket) {
         if (isAdminDoToken()) return;
         UUID equipeIdToken = getEquipeIdDoToken();
-        if (equipeIdToken != null && !ticket.getEquipeId().equals(equipeIdToken)) {
+        if (equipeIdToken == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "equipeId nao disponivel no token");
+        }
+        if (!ticket.getEquipeId().equals(equipeIdToken)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado aos dados de outra equipe.");
         }
     }

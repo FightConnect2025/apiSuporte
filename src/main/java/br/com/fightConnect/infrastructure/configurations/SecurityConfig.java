@@ -2,10 +2,7 @@ package br.com.fightConnect.infrastructure.configurations;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-
-import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,8 +14,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
@@ -83,6 +78,7 @@ public class SecurityConfig {
                 auth
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/tickets/exportar/**").authenticated()
+                    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                     .anyRequest().authenticated();
             })
             .oauth2ResourceServer(oauth2 -> oauth2
@@ -123,12 +119,6 @@ public class SecurityConfig {
         return converter;
     }
 
-    private String normalizarRole(String perfil) {
-        if ("ADMINISTRADOR".equals(perfil)) return "ADMIN";
-        if ("SUPERADMIN".equals(perfil)) return "SUPER_ADMIN";
-        return perfil;
-    }
-
     @Bean
     public BearerTokenResolver bearerTokenResolver() {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
@@ -148,14 +138,6 @@ public class SecurityConfig {
             }
             return null;
         };
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder(
-            @Value("${jwt.secret}") String secret,
-            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri) {
-        return new HybridJwtDecoder(secret, jwkSetUri, issuerUri);
     }
 
     @Bean

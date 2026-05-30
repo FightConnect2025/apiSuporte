@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
+
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,7 +33,13 @@ public class SseController {
     @Operation(summary = "Inscrever-se para notificacoes em tempo real dos tickets")
     @GetMapping(value = "/tickets", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe(@AuthenticationPrincipal Jwt jwt) {
-        String userId = jwt != null ? jwt.getSubject() : UUID.randomUUID().toString();
+        String userId;
+        if (jwt != null) {
+            UUID adapterId = JwtClaimsAdapter.usuarioId(jwt);
+            userId = adapterId != null ? adapterId.toString() : jwt.getSubject();
+        } else {
+            userId = UUID.randomUUID().toString();
+        }
         SseEmitter emitter = new SseEmitter(0L);
 
         emitters.put(userId, emitter);

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.fightConnect.infrastructure.messaging.AuditoriaProducer;
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,8 +68,10 @@ public class GlobalExceptionHandler {
             String equipeId = null;
             var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-                usuarioId = jwt.getSubject();
-                equipeId = jwt.getClaimAsString("equipeId");
+                UUID uid = JwtClaimsAdapter.usuarioId(jwt);
+                if (uid != null) usuarioId = uid.toString();
+                UUID eid = JwtClaimsAdapter.equipeId(jwt);
+                if (eid != null) equipeId = eid.toString();
             }
 
             Map<String, Object> detalhes = new java.util.HashMap<>();

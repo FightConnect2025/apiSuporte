@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
+
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -72,8 +74,8 @@ public class RateLimitingFilter implements Filter {
 
         var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-            String userId = jwt.getSubject();
-            if (userId != null) return ip + "|" + userId;
+            var usuarioId = JwtClaimsAdapter.usuarioId(jwt);
+            if (usuarioId != null) return ip + "|" + usuarioId.toString();
         }
         return ip;
     }

@@ -18,9 +18,21 @@ public final class JwtClaimsAdapter {
     public static UUID usuarioId(Jwt jwt) {
         if (jwt == null) return null;
         String usuarioId = jwt.getClaimAsString("usuarioId");
-        if (StringUtils.hasText(usuarioId)) return UUID.fromString(usuarioId);
+        if (StringUtils.hasText(usuarioId)) {
+            try {
+                return UUID.fromString(usuarioId);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
         String sub = jwt.getSubject();
-        if (StringUtils.hasText(sub)) return UUID.fromString(sub);
+        if (StringUtils.hasText(sub)) {
+            try {
+                return UUID.fromString(sub);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
         return null;
     }
 
@@ -60,7 +72,7 @@ public final class JwtClaimsAdapter {
         if (jwt == null) return null;
         String email = jwt.getClaimAsString("email");
         if (StringUtils.hasText(email)) return email;
-        return jwt.getSubject();
+        return null;
     }
 
     public static String normalizarRole(String perfil) {
@@ -75,7 +87,7 @@ public final class JwtClaimsAdapter {
 
     public static boolean isKeycloakToken(Jwt jwt) {
         if (jwt == null) return false;
-        String iss = jwt.getIssuer().toString();
-        return iss != null && iss.toLowerCase().contains("keycloak");
+        var iss = jwt.getIssuer();
+        return iss != null && iss.toString().toLowerCase().contains("keycloak");
     }
 }

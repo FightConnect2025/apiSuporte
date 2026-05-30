@@ -5,6 +5,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
@@ -25,6 +26,10 @@ public class HybridJwtDecoder implements JwtDecoder {
             @Value("${jwt.secret}") String secret,
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}") String jwkSetUri,
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri) {
+
+        if (!StringUtils.hasText(secret)) {
+            throw new IllegalArgumentException("jwt.secret obrigatorio");
+        }
 
         // Decoder legado (HS256)
         SecretKey key = new SecretKeySpec(secret.trim().getBytes(StandardCharsets.UTF_8), "HmacSHA256");

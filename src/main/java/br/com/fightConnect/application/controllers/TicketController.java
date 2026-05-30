@@ -38,6 +38,7 @@ import br.com.fightConnect.domain.models.dtos.TicketResponseDTO;
 import br.com.fightConnect.domain.models.dtos.UpdateTicketRequestDTO;
 import br.com.fightConnect.domain.models.dtos.UpdateTicketStatusRequestDTO;
 import br.com.fightConnect.domain.models.enums.TicketStatus;
+import br.com.fightConnect.infrastructure.security.JwtClaimsAdapter;
 import br.com.fightConnect.infrastructure.storage.LocalFileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -55,19 +56,6 @@ public class TicketController {
     private final TicketService ticketService;
     private final LocalFileStorageService storageService;
 
-    private UUID extractUserId(Jwt jwt) {
-        if (jwt == null) return null;
-        Object usuarioIdClaim = jwt.getClaims().get("usuarioId");
-        if (usuarioIdClaim != null) {
-            try {
-                return UUID.fromString(usuarioIdClaim.toString());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        String sub = jwt.getSubject();
-        return sub != null ? UUID.fromString(sub) : null;
-    }
-
     @Operation(summary = "Criar ticket")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated()")
@@ -76,7 +64,7 @@ public class TicketController {
             @RequestBody @Valid CreateTicketRequestDTO dto,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        return ticketService.criar(dto, extractUserId(jwt));
+        return ticketService.criar(dto, JwtClaimsAdapter.usuarioId(jwt));
     }
 
     @Operation(summary = "Buscar ticket por id")
@@ -109,8 +97,9 @@ public class TicketController {
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
+        UUID usuarioId = JwtClaimsAdapter.usuarioId(jwt);
         return ticketService.listarFiltrado(
-                extractUserId(jwt), equipeId, extractUserId(jwt),
+                usuarioId, equipeId, usuarioId,
                 abertos, status, dataInicio, dataFim, pageable
         );
     }
@@ -159,7 +148,7 @@ public class TicketController {
             @RequestBody @Valid CreateTicketMessageRequestDTO dto,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        return ticketService.adicionar(ticketId, extractUserId(jwt), dto);
+        return ticketService.adicionar(ticketId, JwtClaimsAdapter.usuarioId(jwt), dto);
     }
 
     @Operation(summary = "Responder e finalizar (autorId extraido do JWT)")
@@ -171,7 +160,7 @@ public class TicketController {
             @RequestBody @Valid FinalizarTicketRequestDTO dto,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        ticketService.responderEFinalizar(ticketId, extractUserId(jwt), dto);
+        ticketService.responderEFinalizar(ticketId, JwtClaimsAdapter.usuarioId(jwt), dto);
     }
 
     @Operation(summary = "Marcar ticket como lido (usuarioId extraido do JWT)")
@@ -182,7 +171,7 @@ public class TicketController {
             @PathVariable @NotNull UUID ticketId,
             @AuthenticationPrincipal Jwt jwt
     ) {
-        ticketService.marcarComoLido(ticketId, extractUserId(jwt));
+        ticketService.marcarComoLido(ticketId, JwtClaimsAdapter.usuarioId(jwt));
     }
 
     @Operation(summary = "Servir imagem de ticket com verificacao de acesso")
@@ -228,7 +217,7 @@ public class TicketController {
             OffsetDateTime dataFim
     ) {
         return ticketService.exportarCsv(
-                extractUserId(jwt), equipeId, status, dataInicio, dataFim
+                JwtClaimsAdapter.usuarioId(jwt), equipeId, status, dataInicio, dataFim
         );
     }
 }
