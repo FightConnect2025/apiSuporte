@@ -36,7 +36,7 @@ public class SseController {
         String userId;
         if (jwt != null) {
             UUID adapterId = JwtClaimsAdapter.usuarioId(jwt);
-            userId = adapterId != null ? adapterId.toString() : jwt.getSubject();
+            userId = adapterId != null ? adapterId.toString() : UUID.randomUUID().toString();
         } else {
             userId = UUID.randomUUID().toString();
         }

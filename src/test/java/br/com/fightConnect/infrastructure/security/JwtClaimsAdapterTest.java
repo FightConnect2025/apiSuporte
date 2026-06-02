@@ -21,13 +21,33 @@ class JwtClaimsAdapterTest {
     }
 
     @Test
-    void usuarioId_keycloak_sub() {
+    void usuarioId_fightconnect_usuario_id() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("fightconnect_usuario_id", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.usuarioId(jwt));
+    }
+
+    @Test
+    void usuarioId_legado_subFallback() {
         UUID id = UUID.randomUUID();
         Jwt jwt = Jwt.withTokenValue("mock")
                 .header("alg", "none")
                 .subject(id.toString())
                 .build();
         assertEquals(id, JwtClaimsAdapter.usuarioId(jwt));
+    }
+
+    @Test
+    void usuarioId_keycloak_semClaimCustomizada_retornaNull() {
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .issuer("https://keycloak.fightconnect.com.br/realms/fc")
+                .subject(UUID.randomUUID().toString())
+                .build();
+        assertNull(JwtClaimsAdapter.usuarioId(jwt));
     }
 
     @Test
@@ -68,6 +88,26 @@ class JwtClaimsAdapterTest {
         Jwt jwt = Jwt.withTokenValue("mock")
                 .header("alg", "none")
                 .claim("equipeId", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.equipeId(jwt));
+    }
+
+    @Test
+    void equipeId_fightconnect_equipe_id() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("fightconnect_equipe_id", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.equipeId(jwt));
+    }
+
+    @Test
+    void equipeId_equipe_id() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("equipe_id", id.toString())
                 .build();
         assertEquals(id, JwtClaimsAdapter.equipeId(jwt));
     }
@@ -114,7 +154,47 @@ class JwtClaimsAdapterTest {
     }
 
     @Test
-    void isKeycloakToken_true() {
+    void professorId_legado() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("professorId", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.professorId(jwt));
+    }
+
+    @Test
+    void professorId_fightconnect_professor_id() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("fightconnect_professor_id", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.professorId(jwt));
+    }
+
+    @Test
+    void unidadeId_legado() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("unidadeId", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.unidadeId(jwt));
+    }
+
+    @Test
+    void unidadeId_fightconnect_unidade_id() {
+        UUID id = UUID.randomUUID();
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("fightconnect_unidade_id", id.toString())
+                .build();
+        assertEquals(id, JwtClaimsAdapter.unidadeId(jwt));
+    }
+
+    @Test
+    void isKeycloakToken_true_por_issuer() {
         Jwt jwt = Jwt.withTokenValue("mock")
                 .header("alg", "none")
                 .issuer("https://keycloak.fightconnect.com.br/realms/fc")
@@ -123,7 +203,16 @@ class JwtClaimsAdapterTest {
     }
 
     @Test
-    void isKeycloakToken_issuerNull() {
+    void isKeycloakToken_true_por_realm_access() {
+        Jwt jwt = Jwt.withTokenValue("mock")
+                .header("alg", "none")
+                .claim("realm_access", Map.of("roles", java.util.List.of("USER")))
+                .build();
+        assertTrue(JwtClaimsAdapter.isKeycloakToken(jwt));
+    }
+
+    @Test
+    void isKeycloakToken_issuerNull_semRealmAccess() {
         Jwt jwt = Jwt.withTokenValue("mock")
                 .header("alg", "none")
                 .claim("dummy", "value")

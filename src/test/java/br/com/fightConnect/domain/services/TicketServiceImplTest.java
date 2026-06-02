@@ -44,6 +44,7 @@ import br.com.fightConnect.infrastructure.clients.apiAuth.ApiAuthClient.ApiAuthA
 import br.com.fightConnect.infrastructure.clients.apiAuth.ApiAuthClient.ApiAuthProfessorClient;
 import br.com.fightConnect.infrastructure.repositories.TicketFeedbackRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketFotoRepository;
+import br.com.fightConnect.infrastructure.repositories.TicketMessageAttachmentRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketMessageRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketReadRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketRepository;
@@ -61,6 +62,7 @@ class TicketServiceImplTest {
     @Mock private TicketMessageRepository messageRepo;
     @Mock private TicketReadRepository readRepo;
     @Mock private TicketFeedbackRepository feedbackRepo;
+    @Mock private TicketMessageAttachmentRepository attachmentRepo;
 
     @Mock private TicketFotoPorEquipeComponent ticketFotoPorEquipeComponent;
     @Mock private FileStorageService storage;

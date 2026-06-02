@@ -14,7 +14,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * Decoder híbrido que suporta tanto JWT legado (HS256) quanto Keycloak (RS256).
- * Tenta primeiro decodificar como Keycloak (RS256), se falhar tenta legado (HS256).
+ * Se o token parecer um JWT RS256 (header com "RS256" ou "kid") e houver um
+ * decoder Keycloak configurado, tenta primeiro por esse caminho; caso falhe,
+ * faz fallback para o decoder legado (HS256). Caso contrario, usa o legado direto.
  */
 @Component
 public class HybridJwtDecoder implements JwtDecoder {

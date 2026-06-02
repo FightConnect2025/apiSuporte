@@ -106,7 +106,7 @@ public class TicketController {
 
     @Operation(summary = "Atualizar ticket")
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SUPER_GESTOR')")
     public TicketResponseDTO atualizar(
             @PathVariable @NotNull UUID id,
             @RequestBody @Valid UpdateTicketRequestDTO dto
@@ -149,6 +149,21 @@ public class TicketController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return ticketService.adicionar(ticketId, JwtClaimsAdapter.usuarioId(jwt), dto);
+    }
+
+    @Operation(summary = "Adicionar mensagem ao ticket com anexos (autorId extraido do JWT)")
+    @PostMapping(value = "/{ticketId}/mensagens/anexos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    @ResponseStatus(HttpStatus.CREATED)
+    public TicketMessageResponseDTO adicionarMensagemComAnexos(
+            @PathVariable @NotNull UUID ticketId,
+            @RequestParam("autorTipo") br.com.fightConnect.domain.models.enums.TicketMessageAuthorType autorTipo,
+            @RequestParam("texto") String texto,
+            @RequestParam(value = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        var dto = new CreateTicketMessageRequestDTO(autorTipo, texto);
+        return ticketService.adicionar(ticketId, JwtClaimsAdapter.usuarioId(jwt), dto, files);
     }
 
     @Operation(summary = "Responder e finalizar (autorId extraido do JWT)")

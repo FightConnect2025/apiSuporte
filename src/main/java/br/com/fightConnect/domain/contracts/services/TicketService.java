@@ -24,6 +24,8 @@ public interface TicketService {
             List<TicketStatus> status, OffsetDateTime dataInicio, OffsetDateTime dataFim, Pageable pageable);
     List<TicketMessageResponseDTO> listar(UUID ticketId);
     TicketMessageResponseDTO adicionar(UUID ticketId, UUID autorUsuarioId, CreateTicketMessageRequestDTO dto);
+    TicketMessageResponseDTO adicionar(UUID ticketId, UUID autorUsuarioId, CreateTicketMessageRequestDTO dto,
+            List<org.springframework.web.multipart.MultipartFile> anexos);
     void responderEFinalizar(UUID ticketId, UUID autorUsuarioId, FinalizarTicketRequestDTO dto);
     TicketResponseDTO atualizar(UUID id, UpdateTicketRequestDTO dto);
     void marcarComoLido(UUID ticketId, UUID usuarioId);

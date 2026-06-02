@@ -9,8 +9,6 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,8 +42,7 @@ public class UploadController {
     @ResponseStatus(HttpStatus.CREATED)
     public List<TicketFotoResponseDTO> uploadFotos(
             @PathVariable UUID ticketId,
-            @RequestParam("files") List<MultipartFile> files,
-            @AuthenticationPrincipal Jwt jwt
+            @RequestParam("files") List<MultipartFile> files
     ) throws IOException {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new RuntimeException("Ticket nao encontrado"));

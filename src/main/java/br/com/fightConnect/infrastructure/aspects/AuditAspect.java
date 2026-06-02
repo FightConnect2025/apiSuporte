@@ -90,10 +90,10 @@ public class AuditAspect {
             if (uid != null) usuarioId = uid.toString();
             UUID eid = JwtClaimsAdapter.equipeId(jwt);
             if (eid != null) equipeId = eid.toString();
-            String professorIdStr = jwt.getClaimAsString("professorId");
-            if (professorIdStr != null) professorId = professorIdStr;
-            String unidadeIdStr = jwt.getClaimAsString("unidadeId");
-            if (unidadeIdStr != null) unidadeId = unidadeIdStr;
+            UUID pid = JwtClaimsAdapter.professorId(jwt);
+            if (pid != null) professorId = pid.toString();
+            UUID uvid = JwtClaimsAdapter.unidadeId(jwt);
+            if (uvid != null) unidadeId = uvid.toString();
             nomeUsuario = JwtClaimsAdapter.nome(jwt);
             if (nomeUsuario == null) nomeUsuario = JwtClaimsAdapter.email(jwt);
         }

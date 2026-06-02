@@ -39,6 +39,7 @@ import br.com.fightConnect.infrastructure.clients.apiAuth.ApiAuthClient.ApiAuthA
 import br.com.fightConnect.infrastructure.clients.apiAuth.ApiAuthClient.ApiAuthProfessorClient;
 import br.com.fightConnect.infrastructure.repositories.TicketFeedbackRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketFotoRepository;
+import br.com.fightConnect.infrastructure.repositories.TicketMessageAttachmentRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketMessageRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketReadRepository;
 import br.com.fightConnect.infrastructure.repositories.TicketRepository;
@@ -61,6 +62,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketMessageRepository messageRepo;
     private final TicketReadRepository readRepo;
     private final TicketFeedbackRepository feedbackRepo;
+    private final TicketMessageAttachmentRepository attachmentRepo;
 
     private final TicketFotoPorEquipeComponent ticketFotoPorEquipeComponent;
     private final FileStorageService storage;
@@ -376,6 +378,14 @@ public class TicketServiceImpl implements TicketService {
     @Transactional
     @CacheEvict(value = "ticketsList", allEntries = true)
     public TicketMessageResponseDTO adicionar(UUID ticketId, UUID autorUsuarioId, CreateTicketMessageRequestDTO dto) {
+        return adicionar(ticketId, autorUsuarioId, dto, null);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "ticketsList", allEntries = true)
+    public TicketMessageResponseDTO adicionar(UUID ticketId, UUID autorUsuarioId, CreateTicketMessageRequestDTO dto,
+            List<org.springframework.web.multipart.MultipartFile> anexos) {
         if (ticketId == null)
             throw badRequest("ticketId e obrigatorio");
         if (autorUsuarioId == null)
@@ -409,6 +419,31 @@ public class TicketServiceImpl implements TicketService {
                 && dto.autorTipo() != br.com.fightConnect.domain.models.enums.TicketMessageAuthorType.USUARIO;
 
         TicketMessage saved = messageRepo.save(msg);
+
+        if (anexos != null && !anexos.isEmpty()) {
+            String folder = "mensagens/" + ticketId;
+            for (org.springframework.web.multipart.MultipartFile file : anexos) {
+                if (file == null || file.isEmpty()) continue;
+                try {
+                    String original = file.getOriginalFilename();
+                    String fileName = (original == null || original.isBlank())
+                            ? UUID.randomUUID().toString()
+                            : UUID.randomUUID() + "_" + original;
+                    var stored = storage.save(file.getBytes(), file.getContentType(), fileName, folder);
+
+                    var attachment = br.com.fightConnect.domain.models.entities.TicketMessageAttachment.builder()
+                            .message(saved)
+                            .storageKey(stored.storageKey())
+                            .url(stored.url())
+                            .contentType(file.getContentType())
+                            .fileName(original)
+                            .build();
+                    attachmentRepo.save(attachment);
+                } catch (Exception e) {
+                    log.warn("Falha ao salvar anexo da mensagem: {}", e.getMessage());
+                }
+            }
+        }
 
         if (isPrimeiraResposta) {
             ticket.setPrimeiraRespostaEm(OffsetDateTime.now());
@@ -506,10 +541,18 @@ public class TicketServiceImpl implements TicketService {
     }
 
     private TicketMessageResponseDTO toMessageDTO(TicketMessage m) {
+        var anexos = attachmentRepo.findByMessageId(m.getId()).stream()
+                .map(this::toAttachmentDTO).toList();
         return new TicketMessageResponseDTO(
                 m.getId(), m.getTicket() == null ? null : m.getTicket().getId(),
                 m.getAutorUsuarioId(), m.getAutorNome(), m.getAutorTipo(),
-                m.getEquipeNome(), m.getTexto(), m.getCriadoEm());
+                m.getEquipeNome(), m.getTexto(), m.getCriadoEm(), anexos);
+    }
+
+    private br.com.fightConnect.domain.models.dtos.TicketMessageAttachmentResponseDTO toAttachmentDTO(
+            br.com.fightConnect.domain.models.entities.TicketMessageAttachment a) {
+        return new br.com.fightConnect.domain.models.dtos.TicketMessageAttachmentResponseDTO(
+                a.getId(), a.getUrl(), a.getContentType(), a.getFileName());
     }
 
     private static ResponseStatusException badRequest(String msg) {
@@ -576,6 +619,17 @@ public class TicketServiceImpl implements TicketService {
     }
 
     private UsuarioInfo buscarInfoUsuario(UUID usuarioId) {
+        // 1. Tenta extrair direto do JWT (suporte a Keycloak / token self-contained)
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            String nomeDoToken = br.com.fightConnect.infrastructure.security.JwtClaimsAdapter.nome(jwt);
+            String emailDoToken = br.com.fightConnect.infrastructure.security.JwtClaimsAdapter.email(jwt);
+            if (nomeDoToken != null) {
+                return new UsuarioInfo(nomeDoToken, emailDoToken);
+            }
+        }
+
+        // 2. Fallback para API Auth (modo legado ou tokens antigos sem claims completas)
         try {
             var a = apiAuthAlunoClient.buscarPorId(usuarioId);
             if (a != null) return new UsuarioInfo(a.getNome(), a.getEmail());
