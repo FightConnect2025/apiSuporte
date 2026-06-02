@@ -28,9 +28,11 @@ services:
       API_FIGHT_URL: ${API_FIGHT_URL}
       API_FINANCEIRO_URL: ${API_FINANCEIRO_URL}
       API_LOGS_URL: ${API_LOGS_URL}
-      APP_STORAGE_BASE_PATH: ${APP_STORAGE_BASE_PATH}
+      APP_STORAGE_BASE_PATH: ${APP_STORAGE_BASE_PATH:-/var/www/fightconnect.com.br/homologacao.fightconnect/tickets}
+      APP_STORAGE_PUBLIC_BASE_URL: ${APP_STORAGE_PUBLIC_BASE_URL:-/tickets}
+      APP_STORAGE_PUBLIC_HOST: ${APP_STORAGE_PUBLIC_HOST:-https://homologacao.fightconnect.com.br}
     volumes:
-      - ./images:/data/images
+      - /var/www/fightconnect.com.br/homologacao.fightconnect/tickets:/var/www/fightconnect.com.br/homologacao.fightconnect/tickets
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
