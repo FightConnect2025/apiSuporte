@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: helpdesk
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: coti
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5435:5432"   # host:container (pra você acessar do seu PC)
     volumes:
@@ -30,7 +30,7 @@ services:
       # ✅ DB: dentro do docker usa o nome do serviço e porta 5432
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-suporte:5432/helpdesk
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: coti
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
 
       # ✅ Rabbit já existente no HOST (Windows)
       SPRING_RABBITMQ_HOST: host.docker.internal
