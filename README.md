@@ -395,3 +395,40 @@ http://localhost:8004/swagger-ui.html
 ## 📞 Contato
 
 Para dúvidas sobre a API Suporte, abra uma issue no repositório.
+
+## 🏗️ Onde esta API entra na arquitetura
+
+A apiSuporte é um dos microsserviços do FightConnect. Ela tem seu próprio banco PostgreSQL, valida o usuário pelo JWT emitido pela API de autenticação e, quando um ticket muda de status ou recebe resposta, publica uma notificação automática no RabbitMQ (fila `notificacao.automatica`). Quem envia o e-mail ou o push é o [fightconnect-worker-notifications](https://github.com/FightConnect2025/fightconnect-worker-notifications).
+
+```mermaid
+flowchart LR
+  U[App / Web] -- "JWT" --> S[apiSuporte]
+  Auth[apiAutentFight] -. "emite o JWT" .-> U
+  S --- DB[(PostgreSQL)]
+  S -- "notificacao.automatica" --> R[(RabbitMQ)]
+  S --- FS[(Storage de fotos)]
+  R --> W[worker-notifications]
+  W --> E[E-mail / Push]
+```
+
+Decisões principais:
+
+- **Banco por serviço.** O suporte não lê tabelas de outra API, o que mantém os serviços independentes.
+- **Camadas separadas.** Controllers, serviços de aplicação e entidades de domínio (tickets, mensagens, status) ficam em pacotes distintos, e a regra de negócio fica nos serviços, não no controller.
+- **Notificação desacoplada.** A API só publica o evento. Se o envio de e-mail falhar, o ticket continua salvo normalmente.
+
+## 🔐 Variáveis de ambiente
+
+Nenhuma credencial fica no código. Copie `.env.example` para `.env`:
+
+| Variável | Uso |
+|---|---|
+| `DB_PASSWORD` | Senha do PostgreSQL (usada pelo Postgres e pela API) |
+| `JWT_SECRET` | Segredo para validar os tokens JWT |
+| `SPRING_RABBITMQ_*` | Conexão com o RabbitMQ |
+
+```bash
+cp .env.example .env
+docker compose up -d
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
